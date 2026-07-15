@@ -95,8 +95,8 @@
     elevator, and it only goes <b style="color:#ffd76a">down</b>.</p>
     <div class="controls">
       <div><b>WASD</b> move · <b>SHIFT</b> sprint</div>
-      <div><b>CTRL/C</b> crouch (sneak past Stockers)</div>
-      <div><b>MOUSE</b> look · <b>CLICK</b> attack/fire</div>
+      <div><b>◄ ►</b> turn left / right · <b>CTRL/C</b> crouch</div>
+      <div><b>CLICK</b> attack/fire</div>
       <div><b>E</b> hold to loot / use</div>
       <div><b>R</b> reload · <b>F</b> flashlight</div>
       <div><b>G</b> grab crate · <b>R</b> rotate · <b>R-CLICK</b> weld</div>
@@ -191,6 +191,7 @@ const CFG={
   blackoutMin:70, blackoutMax:160, repairWindow:55,
   noiseWalk:8, noiseRun:19, noiseCrouch:2.2,
   interactRange:2.6,
+  turnSpeed:2.6,                            // rad/sec, arrow-key look turn rate
   maxRealLights:10,
   rainDrops:420,
   shadowSwapDist:26,
@@ -1331,8 +1332,9 @@ function addFear(v){ player.fear=clamp(player.fear+v,0,CFG.fearMax); }
 function updatePlayer(dt){
   if(player.slipping>0){ player.slipping-=dt;
     player.x+=Math.sin(player.yaw)*4*dt; player.z+=Math.cos(player.yaw)*4*dt; resolvePlayerCollision(); syncCamera(dt); return; }
-  const [mdx,mdy]=Input.consumeMouse();
-  player.yaw-=mdx*0.0023; player.pitch=clamp(player.pitch-mdy*0.0023,-1.45,1.45);
+  Input.consumeMouse();                       // drain the accumulator; mouse no longer steers the camera
+  if(Input.keys.ArrowLeft) player.yaw+=CFG.turnSpeed*dt;
+  if(Input.keys.ArrowRight) player.yaw-=CFG.turnSpeed*dt;
 
   const f=(Input.keys.KeyW?1:0)-(Input.keys.KeyS?1:0);
   const s=(Input.keys.KeyA?1:0)-(Input.keys.KeyD?1:0);
