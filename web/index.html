@@ -62,6 +62,21 @@
   .recipe p{margin:5px 0 0;font-size:0.82em;color:#93a5b5;}
   #noteBody{white-space:pre-wrap;color:#cfc7a8;font-family:Georgia,serif;font-size:1.02em;line-height:1.55;}
   #deathOverlay h1{color:#c94f45;}
+  #winOverlay h1{color:#ffd77a;}
+  /* SCP level intro card */
+  #levelCard{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    pointer-events:none;z-index:40;background:rgba(2,3,5,0.55);}
+  #levelCard .lc{background:#0b0e12;border:1px solid #2c3540;border-left:6px solid #e8a04a;
+    border-radius:8px;padding:26px 40px;max-width:560px;text-align:left;box-shadow:0 0 80px rgba(0,0,0,0.95);}
+  #levelCard.danger .lc{border-left-color:#e04a4a;animation:cardPulse 1.2s infinite;}
+  @keyframes cardPulse{0%,100%{box-shadow:0 0 60px rgba(0,0,0,0.9);}50%{box-shadow:0 0 60px rgba(220,50,50,0.35);}}
+  @media (prefers-reduced-motion: reduce){#levelCard.danger .lc{animation:none;}}
+  #lcLevel{font-size:0.8em;letter-spacing:0.35em;color:#8fa3b8;}
+  #lcName{font-size:1.7em;letter-spacing:0.12em;color:#ffe9b0;margin:4px 0;}
+  #lcClass{font-size:0.9em;letter-spacing:0.25em;font-weight:bold;}
+  #lcIntro{color:#9db0c0;font-size:0.92em;margin-top:10px;line-height:1.5;}
+  #lcWarn{display:none;color:#e04a4a;font-size:0.75em;letter-spacing:0.2em;margin-top:12px;
+    border-top:1px solid #442222;padding-top:8px;}
   ::-webkit-scrollbar{width:8px;} ::-webkit-scrollbar-thumb{background:#2c3540;border-radius:4px;}
 </style>
 
@@ -101,6 +116,7 @@
       <div><b>R</b> reload · <b>F</b> flashlight</div>
       <div><b>G</b> grab crate · <b>R</b> rotate · <b>R-CLICK</b> weld</div>
       <div><b>B</b> crafting · <b>J</b> journal · <b>N</b> night vision</div>
+      <div><b>Q</b> use medkit · <b>V</b> drink coffee</div>
       <div><b>1–6</b> equipment · <b>H</b> help · <b>ESC</b> pause</div>
     </div>
     <center><button class="btn" id="startBtn">CLOCK IN</button></center>
@@ -143,8 +159,29 @@
   <b style="color:#e8d9a8">THE CHILD</b> only moves when you're not looking. Never let it touch you.<br>
   <b style="color:#e8d9a8">BLACKOUTS:</b> beat the repair crew to the generator to open the vault — once, ever, per floor.<br>
   <b style="color:#e8d9a8">WELDING:</b> grab crates (G), weld aisles shut (right-click). They will break them. Buy time.<br>
-  <b style="color:#e8d9a8">RAIN:</b> puddles are slippery and loud. Storms mask your noise — and theirs.</p>
+  <b style="color:#e8d9a8">RAIN:</b> puddles are slippery and loud. Storms mask your noise — and theirs.<br>
+  <b style="color:#e8d9a8">THE LEVELS:</b> the elevator now reaches numbered SCP levels — each card shows its danger class. SAFE means safe. KETER does not.<br>
+  <b style="color:#e8d9a8">LEVEL 404</b> holds a wrong-floor keycard. Carry it into the elevator and it will take you somewhere the store doesn't admit exists. Kneel before what you find there, and carry no fire.</p>
   <center><button class="btn closeBtn">UNDERSTOOD</button></center></div>
+</div>
+
+<div id="levelCard"><div class="lc">
+  <div id="lcLevel">LEVEL 001</div>
+  <div id="lcName">THE STORE</div>
+  <div id="lcClass">CLASS: EUCLID</div>
+  <div id="lcIntro"></div>
+  <div id="lcWarn">! CONTAINMENT ADVISORY — HOSTILE ENTITIES CONFIRMED ON THIS LEVEL !</div>
+</div></div>
+
+<div id="winOverlay" class="overlay">
+  <h1>CLOCKED OUT</h1>
+  <div class="panel" style="text-align:center">
+    <p style="color:#ffe9b0;font-size:1.05em">You pass through the Gate of Escape. The intercom voice thanks you,
+    and for the first time, it sounds tired. Behind you, the store keeps its endless morning.</p>
+    <p id="winStats" style="color:#9db0c0"></p>
+    <p style="color:#5d6f80;font-size:0.8em">THE TRUE ENDING — judged worthy by the Guardian of Eterness.</p>
+    <button class="btn" id="winRestartBtn">START A NEW SHIFT</button>
+  </div>
 </div>
 
 <div id="deathOverlay" class="overlay">
@@ -457,16 +494,55 @@ function disposeWorld(){
 function geo(g){ disposables.push(g); return g; }
 
 const LIMINAL_BIOMES=['YELLOW_HALL','EMPLOYEE_MAZE','SEASONAL','WRONG','CHECKOUTS','FLOODED'];
+
+// ---- SCP LEVEL REGISTRY -----------------------------------------------
+// Every biome is a numbered Level with a danger classification. Named
+// levels enter the elevator pool at minFloor with the given weight.
+const LEVEL_META={
+  RETAIL:   {lv:'001',name:'THE STORE',clazz:'EUCLID',intro:'Fluorescent retail, forever. The employees smile until close.'},
+  ARMORY:   {lv:'009',name:'SPORTING GOODS',clazz:'EUCLID',intro:'Someone armed this floor once. Consider why.'},
+  BACKROOMS:{lv:'B',  name:'THE STOCKROOM',clazz:'KETER',intro:'Racks past counting. The dark restocks itself.'},
+  COLD:     {lv:'004',name:'COLD CHAIN',clazz:'EUCLID',intro:'The freezers hum. The freezers are always full.'},
+  YELLOW_HALL:{lv:'Y',name:'YELLOW STORAGE HALL',clazz:'EUCLID',intro:'Buzzing light. Wet carpet. The same shelf, again and again and again.'},
+  EMPLOYEE_MAZE:{lv:'E',name:'EMPLOYEE-ONLY MAZE',clazz:'EUCLID',intro:'Blue corridors and breakroom furniture. The exit signs are lying.'},
+  SEASONAL: {lv:'S',  name:'ABANDONED SEASONAL',clazz:'KETER',intro:'Christmas in July. The mannequins celebrate when you blink.'},
+  WRONG:    {lv:'W',  name:'WRONG WALMART',clazz:'EUCLID → KETER',intro:'Every aisle is aisle 4. The products have no names. Neither will you.'},
+  CHECKOUTS:{lv:'C',  name:'INFINITE CHECKOUT',clazz:'EUCLID',intro:'Lane lights to the horizon. Something is always in line.'},
+  FLOODED:  {lv:'F',  name:'FLOODED BACKROOMS',clazz:'KETER',intro:'Ankle-deep and rising. Your reflection is a poor swimmer.'},
+  LV000:  {lv:'000',    name:'WORKSPACES',clazz:'TICONDEROGA',minFloor:2,w:3,intro:'Beige cubicles. The year is permanently 2004. The workers do not mind you. Do not mind them.',loot:['coffee','keycard','cloth']},
+  LV020:  {lv:'020',    name:'TRAIN METRO SUBLEVEL',clazz:'EUCLID',minFloor:2,w:3,intro:'A subway beneath the store. No train has arrived in years. Things still wait on the platform.',loot:['bolts','battery','pipe']},
+  LV100:  {lv:'100^100',name:'GOOGLE HEADQUARTERS',clazz:'SAFE',minFloor:3,w:2,intro:'Bright offices, free snacks, standing desks. The productivity survived the people.',loot:['proto','coffee','wires']},
+  LV234:  {lv:'234',    name:'MIRROR AISLES',clazz:'EUCLID → KETER',minFloor:3,w:2,intro:'The aisles reflect. Your reflection restocks. The greeters only move when unseen.',loot:['mapfrag','shells']},
+  LV666:  {lv:'666',    name:'SEASONAL GRAVEYARD',clazz:'KETER',minFloor:4,w:2,intro:'Every holiday at once, all of them dead. The mannequins are patient.',loot:['plate','bolts','cloth']},
+  LV12245:{lv:'12245',  name:'INFINITE WAREHOUSE',clazz:'ARCHON-SAFE',minFloor:2,w:3,intro:'Pallets to the horizon. The operators only work. They will only ever work — unless you interrupt them.',loot:['wires','pressure','battery']},
+  LV2000: {lv:'2000',   name:'WATER OFFICES',clazz:'EUCLID',minFloor:3,w:2,intro:'The cubicles flooded long ago. The workers adapted. You have not.',loot:['battery','medkit']},
+  LV404:  {lv:'404',    name:'MISSING DEPARTMENT',clazz:'EUCLID',minFloor:5,w:2,intro:'This floor was never found. Its employee was never hired. It already knows your pockets.',loot:['wires','powder']},
+  LV777:  {lv:'777',    name:'LUCKY BREAKROOM',clazz:'SAFE',minFloor:2,w:1,intro:'Warm light. Fresh coffee. Nothing hunts here. Rest.',loot:['coffee','medkit','cloth']},
+  LVAPO:  {lv:'APO-∞',  name:'THE EVERSCORCH EXPANSE',clazz:'APOLLYON',intro:'An endless desert under a molten sky. The air itself burns matter. The Sorrow Sun wanders. The Guardian of Eterness watches the Gate of Escape. Approach kneeling. Approach empty-handed.',loot:['medkit']},
+};
+const NAMED_LEVELS=Object.keys(LEVEL_META).filter(k=>k.startsWith('LV'));
+
 function biomeFor(floorIdx,rng){
   if(floorIdx===1)return 'RETAIL';
+  // holding the wrong-floor keycard reroutes the elevator. Once.
+  if((inv.counts.wrongcard||0)>0&&!game.apoVisited)return 'LVAPO';
   if(rng()<0.10)return 'ARMORY';
-  // deeper = more liminal; transitional zones between "real" floors
-  const liminalChance=Math.min(0.2+floorIdx*0.08,0.6);
+  // named SCP levels enter the pool by depth
+  const pool=[];
+  NAMED_LEVELS.forEach(k=>{ const m=LEVEL_META[k];
+    if(k!=='LVAPO'&&floorIdx>=(m.minFloor||99))for(let i=0;i<(m.w||1);i++)pool.push(k); });
+  if(pool.length&&rng()<0.38)return pool[(rng()*pool.length)|0];
+  const liminalChance=Math.min(0.2+floorIdx*0.06,0.5);
   if(rng()<liminalChance)return LIMINAL_BIOMES[(rng()*LIMINAL_BIOMES.length)|0];
   if(floorIdx>=4&&rng()<0.4)return 'BACKROOMS';
   return 'RETAIL';
 }
-const isLiminal=b=>LIMINAL_BIOMES.includes(b);
+// deterministic preview so the elevator can announce the destination
+function previewBiome(floorIdx){
+  const seed=(game.worldSeed*486187739+floorIdx*1000003)>>>0;
+  return biomeFor(floorIdx,mulberry32(seed));
+}
+const isLiminal=b=>LIMINAL_BIOMES.includes(b)||['LV234','LV404','LV666'].includes(b);
 
 // Per-biome palette applied to the SHARED materials — only one floor exists
 // at a time, so tinting in place is safe and free.
@@ -482,6 +558,16 @@ function applyBiomeTint(biome){
     WRONG:       {wall:0x9aa1a8,floor:0xc4c1b8,ceil:0xffffff,fog:0x000000},
     CHECKOUTS:   {wall:0x8a9199,floor:0xbdbab1,ceil:0xffffff,fog:0x000000},
     FLOODED:     {wall:0x5a6a66,floor:0x8a948e,ceil:0x9aa39b,fog:0x010604},
+    LV000:       {wall:0xb0a890,floor:0x8f8a7c,ceil:0xe4e0d2,fog:0x030302},
+    LV020:       {wall:0x4e5258,floor:0x55524c,ceil:0x3c3e42,fog:0x000000},
+    LV100:       {wall:0xe8eaee,floor:0xd8dade,ceil:0xffffff,fog:0x0a0b0c},
+    LV234:       {wall:0x9aa4ae,floor:0xcfd4da,ceil:0xf4f6fa,fog:0x02030a},
+    LV666:       {wall:0x6a4a50,floor:0x8a7676,ceil:0xb8a8a8,fog:0x0a0206},
+    LV12245:     {wall:0x6f6a60,floor:0x9a9488,ceil:0xb4aa96,fog:0x020202},
+    LV2000:      {wall:0x4a6da8,floor:0x8a948e,ceil:0xcfd4da,fog:0x010408},
+    LV404:       {wall:0x9aa1a8,floor:0xc4c1b8,ceil:0xffffff,fog:0x000000},
+    LV777:       {wall:0xb08a5a,floor:0x9a7a52,ceil:0xe8d8b8,fog:0x140e04},
+    LVAPO:       {wall:0x7a4a30,floor:0xc49a58,ceil:0x501505,fog:0x2a0e04},
   }[biome]||{wall:0x8a9199,floor:0xb0ada4,ceil:0xffffff,fog:0x000000};
   MAT.wall.color.setHex(t.wall);
   MAT.floor.color.setHex(t.floor);
@@ -498,8 +584,13 @@ function buildFloor(floorIdx){
   const rng=mulberry32(seed);
   const biome=biomeFor(floorIdx,rng);
   game.biome=biome; game.liminal=isLiminal(biome);
+  game.lootBias=(LEVEL_META[biome]&&LEVEL_META[biome].loot)||null;
+  if(biome==='LVAPO'){ // the wrong-floor keycard is spent bringing you here
+    inv.counts.wrongcard=Math.max(0,(inv.counts.wrongcard||0)-1);
+    game.apoVisited=true; refreshHotbar&&refreshHotbar();
+  }
   applyBiomeTint(biome);
-  const dark=biome==='BACKROOMS'||biome==='FLOODED'||biome==='YELLOW_HALL';
+  const dark=['BACKROOMS','FLOODED','YELLOW_HALL','LV020','LV666'].includes(biome);
 
   // ---- floor & ceiling ----
   const floorMat=dark?MAT.floorBack:MAT.floor;
@@ -527,42 +618,53 @@ function buildFloor(floorIdx){
   const hasArmory=biome==='ARMORY'||rng()<0.14;
   if(hasArmory)buildArmory(rng);
 
-  // ---- layout per biome ----
+  // ---- layout per biome / level ----
   switch(biome){
-    case 'BACKROOMS': case 'FLOODED': buildBackrooms(rng); break;
+    case 'BACKROOMS': case 'FLOODED': case 'LV12245': buildBackrooms(rng); break;
     case 'YELLOW_HALL': buildRetailAisles(rng,biome,{len:12,lenVar:0,gap:2,gapVar:0}); break;   // hypnotic repetition
-    case 'SEASONAL':    buildRetailAisles(rng,biome,{len:4,lenVar:2,gap:6,gapVar:2}); break;    // sparse, exposed
+    case 'SEASONAL': case 'LV666': buildRetailAisles(rng,biome,{len:4,lenVar:2,gap:6,gapVar:2}); break;
     case 'EMPLOYEE_MAZE': buildEmployeeMaze(rng); break;
     case 'CHECKOUTS':   buildInfiniteCheckouts(rng); break;
-    default:            buildRetailAisles(rng,biome); break;
+    case 'LV000': case 'LV100': case 'LV2000': buildOffices(rng,biome); break;
+    case 'LV020':  buildMetro(rng); break;
+    case 'LV777':  buildBreakroom(rng); break;
+    case 'LVAPO':  buildEverscorch(rng); break;
+    case 'LV234': case 'LV404': default: buildRetailAisles(rng,biome); break;
   }
 
   // ---- registers (front) — hiding + search spots ----
-  if(!['BACKROOMS','FLOODED','EMPLOYEE_MAZE','CHECKOUTS'].includes(biome))buildRegisters(rng);
+  if(['RETAIL','ARMORY','COLD','WRONG','SEASONAL','YELLOW_HALL','LV234','LV404'].includes(biome))buildRegisters(rng);
 
   // ---- liminal set dressing ----
   if(typeof artLiminalDress==='function')artLiminalDress(biome,rng);
 
   // ---- ceiling light fixtures (deterministic night lottery) ----
-  buildFixtures(rng,dark);
+  if(biome!=='LVAPO')buildFixtures(rng,dark);   // no fluorescents under a molten sky
+  else if(lightPool.length===0){ for(let i=0;i<CFG.maxRealLights;i++){ const L=new THREE.PointLight(0xfff2cc,0,17,2); scene.add(L); lightPool.push(L); } }
 
   // ---- clutter crates (weldable), loot, lore notes, leaks/puddle sites ----
-  scatterCrates(rng, dark?46:22);
-  scatterLoot(rng, 26+floorIdx*2);
-  scatterNotes(rng, 3);
-  planLeaks(rng, 10);
+  if(biome!=='LVAPO'&&biome!=='LV777'){
+    scatterCrates(rng, dark?46:22);
+    scatterLoot(rng, 26+floorIdx*2);
+    scatterNotes(rng, 3);
+    planLeaks(rng, 10);
+  } else if(biome==='LV777'){ scatterLoot(rng,14); }
+  else { scatterLoot(rng,6); }
+  // guaranteed quest / signature drops per level
+  if(typeof spawnSignatureLoot==='function')spawnSignatureLoot(biome,rng);
 
   // ---- rain particle system (activated by weather) ----
   buildRain();
 
   // ---- signage + ceiling detail + dust atmosphere (art layer) ----
   if(typeof artSignage==='function'){
-    if(biome==='WRONG')artSignageWrong(rng);                       // corrupted
-    else if(!['BACKROOMS','FLOODED','EMPLOYEE_MAZE'].includes(biome)){ artSignage(rng); artPriceBoards(rng); }
+    if(biome==='WRONG'||biome==='LV404')artSignageWrong(rng);      // corrupted
+    else if(['RETAIL','ARMORY','COLD','SEASONAL','YELLOW_HALL','CHECKOUTS','LV234','LV666'].includes(biome)){
+      artSignage(rng); artPriceBoards(rng); }
   }
   if(typeof artCeilingDetail==='function')artCeilingDetail(rng);
   if(typeof artDust==='function')artDust();
-  if(typeof artWaterPlane==='function')artWaterPlane(biome==='FLOODED'?0.16:0);
+  if(typeof artWaterPlane==='function')artWaterPlane(biome==='FLOODED'?0.16:biome==='LV2000'?0.3:0);
 
   // ---- populate employees ----
   spawnPopulation(rng,floorIdx,biome);
@@ -707,6 +809,86 @@ function buildEmployeeMaze(rng){
   buildRoomWallInstances();
 }
 
+// LEVEL 000 / 100^100 / 2000 — office cubicle farms (bright or drowned)
+function buildOffices(rng,biome){
+  const deskMat=biome==='LV100'?new THREE.MeshStandardMaterial({color:0xf4f5f8,roughness:0.5})
+                               :new THREE.MeshStandardMaterial({color:0x8a7a5e,roughness:0.8});
+  disposables.push(deskMat);
+  const partGeo=geo(new THREE.BoxGeometry(1,1.5,1)), deskGeo=geo(new THREE.BoxGeometry(1,0.75,0.9));
+  const monGeo=geo(new THREE.BoxGeometry(0.45,0.35,0.08));
+  const monMat=new THREE.MeshBasicMaterial({color:biome==='LV100'?0x9ac4ff:0x1a2a1a}); disposables.push(monMat);
+  for(let x=8;x<GRID_W-18;x+=5){ for(let z=8;z<GRID_D-10;z+=4){
+    if(nearRooms(x,z))continue;
+    const r=rng();
+    if(r<0.42){ grid[gi(x,z)]=G_SHELF; // cubicle partition (blocks + hides)
+      const [wx,wz]=cellToWorld(x,z);
+      const p=new THREE.Mesh(partGeo,MAT.wall); p.position.set(wx,0.75,wz); world.add(p);
+    } else if(r<0.62){ grid[gi(x,z)]=G_PROPS; // desk with monitor
+      const [wx,wz]=cellToWorld(x,z);
+      const dsk=new THREE.Mesh(deskGeo,deskMat); dsk.position.set(wx,0.37,wz); world.add(dsk);
+      const mon=new THREE.Mesh(monGeo,monMat); mon.position.set(wx,0.95,wz); mon.rotation.y=rng()*6; world.add(mon);
+    }
+  } }
+  buildRoomWallInstances();
+}
+
+// LEVEL 020 — metro sublevel: two long tunnels, a dead platform between
+function buildMetro(rng){
+  const zA=18,zB=GRID_D-20; // tunnel center lines
+  for(let x=4;x<GRID_W-4;x++)for(let z=4;z<GRID_D-4;z++){
+    if(nearRooms(x,z))continue;
+    const inTunnelA=Math.abs(z-zA)<=3, inTunnelB=Math.abs(z-zB)<=3;
+    const inCross=(x%22)<2;                       // stair cuts between tunnels
+    const inPlatform=z>zA+3&&z<zB-3&&(x>30&&x<GRID_W-30);
+    if(!inTunnelA&&!inTunnelB&&!inCross&&!inPlatform)grid[gi(x,z)]=G_WALL;
+  }
+  // rails down each tunnel
+  const railGeo=geo(new THREE.BoxGeometry(GRID_W-10,0.08,0.1));
+  [zA,zB].forEach(zc=>{ [-0.7,0.7].forEach(off=>{
+    const [wx,wz]=cellToWorld(GRID_W/2|0,zc);
+    const r=new THREE.Mesh(railGeo,MAT.cart); r.position.set(0,0.06,wz+off); world.add(r); }); });
+  buildRoomWallInstances();
+}
+
+// LEVEL 777 — the lucky breakroom: one warm safe hall with tables
+function buildBreakroom(rng){
+  // wall off everything outside a central hall
+  for(let x=4;x<GRID_W-4;x++)for(let z=4;z<GRID_D-4;z++){
+    if(nearRooms(x,z))continue;
+    const inHall=x>24&&x<GRID_W-24&&z>18&&z<GRID_D-18;
+    const corridor=(Math.abs(z-(GRID_D/2|0))<2)||(Math.abs(x-(GRID_W-14))<2&&z<20)||(Math.abs(x-8)<2&&z<20);
+    if(!inHall&&!corridor)grid[gi(x,z)]=G_WALL;
+  }
+  const tblGeo=geo(new THREE.CylinderGeometry(0.7,0.7,0.06,10));
+  const legGeo=geo(new THREE.CylinderGeometry(0.05,0.05,0.7,6));
+  const tblMat=new THREE.MeshStandardMaterial({color:0x9a6a3a,roughness:0.7}); disposables.push(tblMat);
+  for(let i=0;i<6;i++){ const cx=28+((rng()*(GRID_W-56))|0), cz=22+((rng()*(GRID_D-44))|0);
+    if(grid[gi(cx,cz)]!==G_WALK)continue; grid[gi(cx,cz)]=G_PROPS;
+    const [wx,wz]=cellToWorld(cx,cz);
+    const t=new THREE.Mesh(tblGeo,tblMat); t.position.set(wx,0.73,wz); world.add(t);
+    const l=new THREE.Mesh(legGeo,tblMat); l.position.set(wx,0.35,wz); world.add(l);
+  }
+  if(typeof artVending==='function'){ artVending(...cellToWorld(30,20),rng); artVending(...cellToWorld(GRID_W-30,20),rng); }
+  buildRoomWallInstances();
+}
+
+// LEVEL APO-∞ — the Everscorch Expanse: open burning desert, rock spires,
+// the Sorrow Sun, the Guardian of Eterness, and the Gate of Escape
+function buildEverscorch(rng){
+  const rockMat=new THREE.MeshStandardMaterial({color:0x5a3826,roughness:0.95}); disposables.push(rockMat);
+  const spireGeo=geo(new THREE.ConeGeometry(1.4,6,7));
+  for(let i=0;i<46;i++){
+    const cx=(6+rng()*(GRID_W-12))|0, cz=(6+rng()*(GRID_D-12))|0;
+    if(nearRooms(cx,cz)||grid[gi(cx,cz)]!==G_WALK)continue;
+    grid[gi(cx,cz)]=G_SHELF;                        // spires block movement AND sunlight
+    const [wx,wz]=cellToWorld(cx,cz);
+    const s=new THREE.Mesh(spireGeo,rockMat); s.position.set(wx,3,wz);
+    s.rotation.y=rng()*6; s.scale.setScalar(0.7+rng()*0.9); world.add(s);
+  }
+  if(typeof artEverscorchDress==='function')artEverscorchDress(rng);
+  buildRoomWallInstances();
+}
+
 // INFINITE CHECKOUT LANES — rows of registers receding into fog
 function buildInfiniteCheckouts(rng){
   for(let z=10;z<GRID_D-10;z+=6){
@@ -780,14 +962,25 @@ function scatterLoot(rng,n){
   }
 }
 function rollLootId(rng){
+  // level loot bias: each SCP level skews drops toward its signature table
+  if(game.lootBias&&rng()<0.45)return game.lootBias[(rng()*game.lootBias.length)|0];
   const r=rng();
   if(r<0.20)return 'bolts'; if(r<0.36)return 'cloth'; if(r<0.50)return 'wires';
   if(r<0.62)return 'pipe'; if(r<0.72)return 'powder'; if(r<0.80)return 'handle';
   if(r<0.88)return 'battery'; if(r<0.94)return 'shells'; return 'rifleAmmo';
 }
 function spawnPickup(x,z,id,count,rare){
-  const m=new THREE.Mesh(geo(new THREE.BoxGeometry(0.32,0.32,0.32)),rare?MAT.lootRare:MAT.loot);
-  m.position.set(x,0.35,z); world.add(m);
+  // real prop models on the ground — cloth looks like cloth, ammo like ammo
+  let m;
+  if(typeof artLootModel==='function'){
+    m=artLootModel(id); m.position.set(x,0.05,z);
+    if(rare){ const halo=new THREE.Mesh(geo(new THREE.CircleGeometry(0.28,12)),MAT.lootRare);
+      halo.rotation.x=-Math.PI/2; halo.position.y=0.012; m.add(halo); }
+  } else {
+    m=new THREE.Mesh(geo(new THREE.BoxGeometry(0.32,0.32,0.32)),rare?MAT.lootRare:MAT.loot);
+    m.position.set(x,0.35,z);
+  }
+  world.add(m);
   const p={x,z,id,count,mesh:m,taken:false};
   pickups.push(p);
   interactables.push({x,z,r:1.7,dur:0.9,prompt:'',pickupRef:p,
@@ -847,6 +1040,9 @@ const ITEMS={
   boots:{name:'Combat Boots',icon:''}, converter:{name:'Industrial Converter',icon:''},
   portgen:{name:'Portable Generator',icon:''}, plate:{name:'Heavy Barricade Plate',icon:''},
   booster:{name:'Battery Booster Kit',icon:''},
+  coffee:{name:'Hot Coffee',icon:''}, keycard:{name:'Office Keycard',icon:''},
+  wrongcard:{name:'Wrong-Floor Keycard',icon:''}, mapfrag:{name:'Distorted Map Fragment',icon:''},
+  proto:{name:'Prototype Tech',icon:''}, realitykey:{name:'REALITY KEY',icon:''},
 };
 const RECIPES=[
   {out:'shotgun',n:1,tier:1,cost:{bolts:4,powder:1,pipe:2,handle:1},desc:'Massive close blast. Wild spread. 2 shells, slow reload. LOUD.'},
@@ -863,6 +1059,7 @@ const RECIPES=[
   {out:'portgen',n:1,tier:2,cost:{battery:2,wires:4,pipe:1},desc:'Placed on assembly. Keeps fences live through blackouts within 10m — but it hums, and they hear it.'},
   {out:'plate',n:1,tier:2,cost:{pipe:2,bolts:4},desc:'Applied on assembly: reinforces your nearest welded barricade with +160 durability plating.'},
   {out:'booster',n:1,tier:2,cost:{battery:1,bolts:2},desc:'Applied on assembly: your nearest electric fence gains battery backup — live even in blackouts.'},
+  {out:'battery',n:2,tier:1,cost:{proto:1},desc:'Strip a Level 100^100 prototype for its power cells.'},
 ];
 const LORE=[
  {t:'CRUMPLED SCHEDULE',b:'Week 340. Same names. Nobody remembers being hired. Nobody remembers the doors. Dana in Produce swears the parking lot is painted on. She stopped clocking out. Then she stopped being Dana.'},
@@ -956,19 +1153,19 @@ class Enemy{
   def(){ return ENEMY_DEFS[this.type]; }
   buildMesh(){
     const d=this.def();
-    // Specters stay ethereal silhouettes (no detailed body).
-    if(this.type==='specter'){ const g=makeSilhouette(d.w,d.h,null); g.traverse(o=>{if(o.isMesh)o.material=MAT.specter;}); this.headNode=g.userData.head; return g; }
+    // Specters + Productivity Ghosts stay ethereal silhouettes.
+    if(this.type==='specter'||this.type==='ghost'){ const g=makeSilhouette(d.w,d.h,null); g.traverse(o=>{if(o.isMesh)o.material=MAT.specter;}); this.headNode=g.userData.head; return g; }
     // Distance LOD: detailed uniformed humanoid up close, pure-black
     // silhouette down the aisle (the shadow-model aesthetic + performance).
     const g=new THREE.Group();
     if(typeof artHumanoid==='function'){
       this.detail=artHumanoid(this.type,d); g.add(this.detail);
-      this.silo=makeSilhouette(d.w,d.h,this.type==='child'?MAT.childEyes:MAT.eyes);
+      this.silo=makeSilhouette(d.w,d.h,null);   // pure black shape — no eye glow
       if(this.type==='crawler'){ this.silo.scale.y=0.5; this.silo.scale.x=1.6; }
       g.add(this.silo); this.silo.visible=false;
       this.headNode=this.detail.userData.head;
     } else {
-      const s=makeSilhouette(d.w,d.h,this.type==='child'?MAT.childEyes:MAT.eyes);
+      const s=makeSilhouette(d.w,d.h,null);
       if(this.type==='roller'){ const cart=new THREE.Mesh(geo(new THREE.BoxGeometry(1,0.7,1.6)),MAT.cart); cart.position.set(0,0.45,0.6); s.add(cart); }
       if(this.type==='crawler'){ s.scale.y=0.5; s.scale.x=1.6; }
       g.add(s); this.headNode=s.userData.head;
@@ -978,9 +1175,23 @@ class Enemy{
   updateLOD(){
     if(!this.detail||!this.silo)return;
     const far=dist2d(this.x,this.z,player.x,player.z)>CFG.shadowSwapDist;
-    this.detail.visible=!far; this.silo.visible=far;
+    this.detail.visible=!far;
+    // flickering silhouettes: at night the distant shape occasionally drops
+    // out for a frame — you doubt whether you saw it at all
+    this.silo.visible=far&&!(game.shift==='NIGHT'&&Math.random()<0.03);
+    // face swap: day smiley <-> night uncanny (exactly one face, ever)
+    const ud=this.detail.userData, night=game.shift==='NIGHT';
+    if(ud.face&&this._faceNight!==night){
+      this._faceNight=night;
+      ud.face.material.map=night?ud.faceNight:ud.faceDay;
+      ud.face.material.needsUpdate=true;
+    }
   }
-  hostile(){ return game.shift==='NIGHT'||this.type==='crawler'||this.type==='specter'; }
+  hostile(){
+    if(this.passive)return false;                          // Workers, Ghosts: never
+    if(this.provokedOnly&&!this.provoked)return false;     // Warehouse Operators: only if you started it
+    return game.shift==='NIGHT'||this.type==='crawler'||this.type==='specter';
+  }
   hearing(){ let h=this.def().hearing; if(game.weather==='STORM')h*=0.8; if(game.power==='OFF')h*=1.25; return h; }
   canSeePlayer(){
     const d=this.def(); if(!d.vision)return false;
@@ -995,7 +1206,14 @@ class Enemy{
       if(game.time-n.t>0.6)break;
       if(n.tag==='managerStep'&&this.type==='manager')continue;
       if(dist2d(this.x,this.z,n.x,n.z)<n.radius*this.hearing()){
-        this.noiseX=n.x; this.noiseZ=n.z; this.noiseMemT=game.time; return true; }
+        // delayed reaction: it heard you a moment before it lets you know
+        this.reactDelay=this.reactDelay??(0.3+Math.random()*0.8);
+        this.pendNoise={x:n.x,z:n.z,at:game.time+this.reactDelay};
+      }
+    }
+    if(this.pendNoise&&game.time>=this.pendNoise.at){
+      this.noiseX=this.pendNoise.x; this.noiseZ=this.pendNoise.z;
+      this.noiseMemT=game.time; this.pendNoise=null; return true;
     }
     return false;
   }
@@ -1017,6 +1235,8 @@ class Enemy{
       case 'child': this.brainChild(dt,d); return; // teleporter: no physics walk
       case 'specter': this.brainSpecter(dt,d); return; // phases: no collision
       case 'faceless': this.brainFaceless(dt,d); return; // observed = frozen
+      case 'worker': this.brainWorker(dt,d); break;
+      case 'ghost': this.brainGhost(dt,d); return;
     }
     // liminal variant: staring pins them in place (Manager excepted)
     if(this.freezeWhenSeen&&this.type!=='manager'&&playerCanSee(this.x,this.z)){
@@ -1047,6 +1267,7 @@ class Enemy{
     const [wx,wz]=cellToWorld(bx,bz); this.seek(wx,wz,speed,0);
   }
   applyMove(dt){
+    if(this._frozen>0){ this.vx=0; this.vz=0; }   // sudden-freeze beat (set in animate)
     // grid collision: axis-separated slide
     let nx=this.x+this.vx*dt, nz=this.z+this.vz*dt;
     const r=0.4;
@@ -1094,10 +1315,34 @@ class Enemy{
   }
   animate(dt){
     const speed=Math.hypot(this.vx,this.vz);
-    const distort=game.shift==='NIGHT'?1.8:1;
+    const night=game.shift==='NIGHT';
+    const distort=night?1.8:1;
     this.mesh.position.y=Math.abs(Math.sin(this.animT*speed*1.6*distort))*0.09*distort;
-    // eerie night head-twitch on whichever body is visible
-    if(this.headNode)this.headNode.rotation.z=game.shift==='NIGHT'?Math.sin(this.animT*13)*0.16:0;
+    // animation horror: intermittent neck SNAPS, not a smooth wobble.
+    // Long stillness, then the head jerks to a wrong angle and slowly rights.
+    if(this.headNode){
+      this._twitchIn=(this._twitchIn??Math.random()*4)-dt;
+      if(night&&this._twitchIn<=0){
+        this._twitchIn=1.5+Math.random()*5;
+        this._headSnap=(Math.random()-0.5)*1.1;   // sudden tilt, up to ~30 deg
+      }
+      this._headSnap=this._headSnap||0;
+      this._headSnap*=Math.pow(0.2,dt);           // slow settle back to level
+      this.headNode.rotation.z=night?this._headSnap:0;
+      // slow deliberate head TILT while standing still, watching
+      if(night&&speed<0.2)this.headNode.rotation.x=Math.sin(this.animT*0.5)*0.18;
+      else this.headNode.rotation.x=0;
+    }
+    // jittery idle: standing bodies micro-shudder at night
+    if(night&&speed<0.2&&this.detail&&this.detail.visible)
+      this.detail.position.x=Math.sin(this.animT*37)*0.006;
+    else if(this.detail)this.detail.position.x=0;
+    // sudden freezes: hunters lock up mid-stride for a beat, then resume
+    if(night&&this.state==='HUNT'){
+      this._frzIn=(this._frzIn??4+Math.random()*8)-dt;
+      if(this._frzIn<=0){ this._frzIn=6+Math.random()*10; this._frozen=0.5+Math.random()*0.7; }
+      if(this._frozen>0){ this._frozen-=dt; this.vx=0; this.vz=0; }
+    }
     // swing arms of the detailed model while moving
     if(this.detail&&this.detail.visible&&this.detail.userData.armR){
       const sw=Math.sin(this.animT*speed*2.4)*0.5*(speed>0.3?1:0);
@@ -1184,7 +1429,9 @@ class Enemy{
         if(this.shortCd<=0){ this.shortCd=10; this.stun=Math.max(this.stun,5);
           AudioEngine.zap(); sparkBurst(this.x,this.z); }
         break;
-      case 'stocker': // blind AND wading — panic thrash, loud, erratic
+      case 'stocker':
+        if(this.waterBorn){ this.vx*=1.3; this.vz*=1.3; break; } // Water Workers: at home in it
+        // blind AND wading — panic thrash, loud, erratic
         this.vx+=Math.sin(game.time*11+this.animT)*1.6*dt*60*0.05;
         this.vz+=Math.cos(game.time*13+this.animT)*1.6*dt*60*0.05;
         if(Math.random()<dt*0.4)emitNoise(this.x,this.z,10,0.3,'splash');
@@ -1193,6 +1440,25 @@ class Enemy{
         this.vx*=1.28; this.vz*=1.28; this.mesh.position.y=-0.15;
         break;
       case 'manager': /* walks through water unaffected. of course he does. */ break;
+    }
+  }
+  // --- Worker Entities (Level 000): non-hostile clock-punchers ---
+  brainWorker(dt,d){
+    this.fleeT=(this.fleeT||0)-dt;
+    if(this.fleeT>0){ // shot at? they just... leave, politely and fast
+      const dx=this.x-player.x,dz=this.z-player.z,l=Math.hypot(dx,dz)||1;
+      this.seek(this.x+dx/l*6,this.z+dz/l*6,d.speed*2.4,dt);
+    } else this.wanderTick(dt,d.speed);
+    // typing mime at a desk when idle — handled by jitter idle in animate
+  }
+  // --- Productivity Ghosts (Level 100^100): drain your will to work ---
+  brainGhost(dt,d){
+    this.wanderTick(dt,d.speed);
+    this.x+=this.vx*dt; this.z+=this.vz*dt;   // phases through cubicles
+    this.mesh.position.set(this.x,Math.sin(this.animT*1.5)*0.2+0.15,this.z);
+    if(dist2d(this.x,this.z,player.x,player.z)<2.2){
+      player.stamina=Math.max(0,player.stamina-9*dt); addFear(dt*3);
+      if(Math.random()<dt*0.3)AudioEngine.staticBurst(0.2,0.04);
     }
   }
   // --- THE EMPLOYEE THAT SHOULDN'T EXIST ---
@@ -1237,7 +1503,9 @@ class Enemy{
   hurt(dmg,fromFire){
     if(this.dead)return;
     if(this.type==='faceless')return;           // nothing touches it back
-    if(this.type==='specter'&&!fromFire)return; // bullets pass through
+    if(this.type==='worker'){ this.fleeT=7; this.hp-=dmg; if(this.hp<=0){this.dead=true;this.despawn(true);} return; }
+    if(this.provokedOnly)this.provoked=true;    // Archon: you broke the truce
+    if((this.type==='specter'||this.type==='ghost')&&!fromFire)return; // bullets pass through
     this.hp-=dmg;
     if(this.hostile()){ this.noiseX=player.x; this.noiseZ=player.z; this.noiseMemT=game.time; }
     if(this.hp<=0){ this.dead=true; game.kills++; this.despawn(true); }
@@ -1256,6 +1524,8 @@ const ENEMY_DEFS={
   child:  {hp:1e9,speed:0,   hearing:0,   vision:0,  dmg:0,  barrDmg:0,  w:0.4,h:1.1},
   specter:{hp:35, speed:1.7, hearing:0,   vision:0,  dmg:6,  barrDmg:0,  w:0.7,h:2.2},
   faceless:{hp:1e9,speed:2.3,hearing:0,   vision:0,  dmg:0,  barrDmg:0,  w:0.62,h:2.0},
+  worker: {hp:40, speed:1.5, hearing:0.3, vision:0,  dmg:0,  barrDmg:0,  w:0.6,h:1.8},
+  ghost:  {hp:30, speed:1.1, hearing:0,   vision:0,  dmg:0,  barrDmg:0,  w:0.6,h:2.0},
 };
 
 function spawnPopulation(rng,floorIdx,biome){
@@ -1273,6 +1543,19 @@ function spawnPopulation(rng,floorIdx,biome){
       e.detail.scale.y=1.25;
       if(e.detail.userData.armR){ e.detail.userData.armR.scale.y=1.7; e.detail.userData.armL.scale.y=1.7; } }
   };
+  // ---- named SCP levels have bespoke populations ----
+  switch(biome){
+    case 'LV000':  spawnAt('worker',8,e=>{e.passive=true;}); return;
+    case 'LV020':  spawnAt('crawler',4); spawnAt('stocker',2,variant); return;
+    case 'LV100':  spawnAt('ghost',4,e=>{e.passive=true;}); return;
+    case 'LV234':  spawnAt('greeter',4,e=>{variant(e);}); spawnAt('stocker',2,variant); return; // mirror greeters move only unseen
+    case 'LV666':  spawnAt('greeter',2,variant); spawnAt('child',1); return; // + 16 mannequin stalkers from set dressing
+    case 'LV12245':spawnAt('stocker',6,e=>{e.provokedOnly=true;}); return;   // Warehouse Operators
+    case 'LV2000': spawnAt('stocker',4,e=>{e.waterBorn=true;}); spawnAt('crawler',2); return; // Water Workers
+    case 'LV404':  spawnAt('faceless',2); spawnAt('stocker',2,variant); return;
+    case 'LV777':  return;                                   // nothing hunts here
+    case 'LVAPO':  return;                                   // the Sun and the Guardian are enough
+  }
   spawnAt('stocker',3+Math.floor(f*0.8),liminal?variant:null);
   spawnAt('greeter',biome==='BACKROOMS'?1:2,liminal?variant:null);
   if(biome!=='EMPLOYEE_MAZE')spawnAt('roller',1+Math.floor(f/2),liminal?variant:null); // carts can't corner the maze
@@ -1639,7 +1922,43 @@ const TextureFactory={
     if(opt.grime){ _grime(x,Math.max(w,h),6,'0,0,0'); _noise(0,x,Math.max(w,h),w*h*0.02,0.05); }
     const t=new THREE.CanvasTexture(c); t.anisotropy=4; disposables.push(t); return t; },
 
-  face(kind){ const S=128,[c,x]=_cv(S); x.fillStyle='#b8a890'; x.fillRect(0,0,S,S); _noise(0,x,S,S*S*0.2,0.06);
+  // day/night face pair — exactly ONE face texture per state, no overlays.
+  // DAY: the normal friendly store smiley. NIGHT: subtle uncanny — widened
+  // eyes, faint dark circles, pale tone, small unnatural smile. No glow,
+  // no teeth, nothing cartoon.
+  face(kind,night){ const S=128,[c,x]=_cv(S);
+    x.fillStyle=night?'#cfc6b8':'#c8b294'; x.fillRect(0,0,S,S); _noise(0,x,S,S*S*0.14,0.05);
+    if(kind==='blind'){ // Stockers keep their bandage identity both shifts
+      x.fillStyle='#c9c3b0'; x.fillRect(0,S*0.28,S,S*0.18);
+      x.strokeStyle=night?'rgba(90,20,20,0.4)':'rgba(120,110,90,0.5)'; x.lineWidth=2;
+      for(let i=0;i<6;i++){ x.beginPath(); x.moveTo(0,S*0.3+i*3); x.lineTo(S,S*0.32+i*3); x.stroke(); }
+      x.strokeStyle='#5a4a3a'; x.lineWidth=3; x.beginPath();
+      if(night){ x.moveTo(S*0.42,S*0.68); x.lineTo(S*0.58,S*0.66); } // flat, slightly off
+      else x.arc(S/2,S*0.6,10,0.2,Math.PI-0.2);
+      x.stroke();
+      const t=new THREE.CanvasTexture(c); t.anisotropy=4; disposables.push(t); return t;
+    }
+    if(!night){
+      // normal Walmart smiley: two dot eyes + honest smile arc. that's it.
+      x.fillStyle='#2a2a2c'; x.beginPath(); x.arc(S*0.38,S*0.4,5.5,0,7); x.arc(S*0.62,S*0.4,5.5,0,7); x.fill();
+      x.strokeStyle='#3a2e26'; x.lineWidth=4; x.beginPath();
+      x.arc(S/2,S*0.52,S*(kind==='greeter'?0.24:0.18),0.3,Math.PI-0.3); x.stroke();
+    } else {
+      // faint dark circles under widened eyes
+      x.fillStyle='rgba(70,60,80,0.28)';
+      x.beginPath(); x.ellipse(S*0.38,S*0.47,10,6,0,0,7); x.ellipse(S*0.62,S*0.47,10,6,0,0,7); x.fill();
+      // widened eyes: large pale sclera, small pinned pupils
+      x.fillStyle='#e8e4da';
+      x.beginPath(); x.ellipse(S*0.38,S*0.4,9,11,0,0,7); x.ellipse(S*0.62,S*0.4,9,11,0,0,7); x.fill();
+      x.fillStyle='#1c1c20';
+      x.beginPath(); x.arc(S*0.38,S*0.41,3,0,7); x.arc(S*0.62,S*0.41,3,0,7); x.fill();
+      // small unnatural smile: thin, too level, a touch too high
+      x.strokeStyle='#4a3a34'; x.lineWidth=2.5; x.beginPath();
+      x.moveTo(S*0.4,S*0.63); x.quadraticCurveTo(S/2,S*0.66,S*0.6,S*0.63); x.stroke();
+    }
+    const t=new THREE.CanvasTexture(c); t.anisotropy=4; disposables.push(t); return t;
+  },
+  _faceLegacy(kind){ const S=128,[c,x]=_cv(S); x.fillStyle='#b8a890'; x.fillRect(0,0,S,S); _noise(0,x,S,S*S*0.2,0.06);
     // grimy pale skin base
     x.fillStyle='rgba(90,70,60,0.15)'; x.fillRect(0,0,S,S);
     if(kind==='greeter'){ // too-wide grin
@@ -1844,14 +2163,16 @@ function artHumanoid(type,def){
   // neck + head
   g.add(_box(0.1,0.08,0.1,MAT.skin,0,H*0.79,0));
   const head=_box(0.26,0.28,0.26,MAT.skin,0,H*0.9,0); g.add(head); g.userData.head=head;
-  // face — the Faceless gets nothing; smooth skin where a face should be
+  // face — ONE plane, texture swapped by shift (day smiley / night uncanny).
+  // No glowing eyes, no overlays. The Faceless gets nothing at all.
   if(!faceless){
     const faceKind=type==='greeter'?'greeter':type==='stocker'?'blind':'normal';
-    const faceTex=TextureFactory.face(faceKind);
-    const face=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.24,0.26)),new THREE.MeshBasicMaterial({map:faceTex,transparent:true})); face.position.set(0,H*0.9,0.135); g.add(face);
-    // glowing eyes (hostility read even in dark)
-    if(type!=='stocker'){ const em=type==='child'?MAT.childEyes:MAT.eyes;
-      g.add(_box(0.04,0.04,0.02,em,-0.06,H*0.92,0.14)); g.add(_box(0.04,0.04,0.02,em,0.06,H*0.92,0.14)); }
+    const dayTex=TextureFactory.face(faceKind,false);
+    const nightTex=TextureFactory.face(faceKind,true);
+    const face=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.24,0.26)),
+      new THREE.MeshBasicMaterial({map:dayTex,transparent:true}));
+    face.position.set(0,H*0.9,0.135); g.add(face);
+    g.userData.face=face; g.userData.faceDay=dayTex; g.userData.faceNight=nightTex;
   }
   // type-specific silhouette shaping
   if(type==='manager'){ g.scale.set(1.15,1.0,1.15); head.scale.y=1.4; head.position.y=H*0.92; } // elongated
@@ -2020,6 +2341,7 @@ let waterPlane=null, mannequins=[], portgens=[], floorProdMesh=null, seasonalBli
 function artResetFloorState(){
   waterPlane=null; mannequins=[]; floatDebris=[]; portgens=[];
   floorProdMesh=null; seasonalBlink=null;
+  if(typeof artApoReset==='function')artApoReset();
   game.baseFloodDepth=0; game.floodDepth=0; game.floodStage=0; game.floodClock=0;
   if(game.weather==='FLOOD')game.weather='DRIZZLE'; // new floor drains the flood
   AudioEngine.setBedLevel&&AudioEngine.setBedLevel('breath',0);
@@ -2050,12 +2372,21 @@ function artMannequin(x,z,rng){
   g.position.set(x,0,z); g.rotation.y=rng()*Math.PI*2; world.add(g);
   mannequins.push({g,x,z,turned:false});
 }
-function artMannequinUpdate(){
+function artMannequinUpdate(dt){
+  const stalkers=game.biome==='LV666';   // Seasonal Graveyard: they don't just watch
   for(const m of mannequins){
     const seen=playerCanSee(m.x,m.z);
-    if(!seen&&!m.turned){ // while you're not looking, they come around
-      m.g.rotation.y=Math.atan2(player.x-m.x,player.z-m.z); m.turned=true;
-    } else if(seen)m.turned=false;
+    if(!seen){
+      if(!m.turned){ m.g.rotation.y=Math.atan2(player.x-m.x,player.z-m.z); m.turned=true; }
+      if(stalkers){ // Mannequin Stalkers: inch closer while unobserved
+        const dx=player.x-m.x,dz=player.z-m.z,l=Math.hypot(dx,dz)||1;
+        if(l>1){ const nx=m.x+dx/l*1.1*(dt||0.016), nz=m.z+dz/l*1.1*(dt||0.016);
+          const [cx,cz]=worldToCell(nx,nz);
+          if(!cellBlocked(cx,cz)){ m.x=nx; m.z=nz; m.g.position.set(m.x,0,m.z); } } }
+    } else m.turned=false;
+    if(stalkers&&dist2d(m.x,m.z,player.x,player.z)<1.1){
+      m.cd=(m.cd||0)-(dt||0.016);
+      if(m.cd<=0){ m.cd=2; damagePlayer(8,'mannequin'); addFear(14); } }
   }
 }
 
@@ -2078,8 +2409,8 @@ function artLiminalDress(biome,rng){
   const spot=(fn,n)=>{ for(let i=0;i<n;i++){ for(let t=0;t<24;t++){
     const cx=(6+rng()*(GRID_W-12))|0, cz=(6+rng()*(GRID_D-12))|0;
     if(grid[gi(cx,cz)]===G_WALK&&!nearRooms(cx,cz)){ const [wx,wz]=cellToWorld(cx,cz); fn(wx,wz); break; } } } };
-  if(biome==='SEASONAL'){
-    spot((x,z)=>artMannequin(x,z,rng),9);
+  if(biome==='SEASONAL'||biome==='LV666'){
+    spot((x,z)=>artMannequin(x,z,rng),biome==='LV666'?16:9);
     // Christmas trees in July: dark cones on trunks
     const needle=new THREE.MeshStandardMaterial({color:0x1d3a24,roughness:0.9}); disposables.push(needle);
     spot((x,z)=>{ const t=new THREE.Group();
@@ -2187,7 +2518,7 @@ function liminalUpdate(dt){
   // dead holiday lights blink out of season
   if(seasonalBlink)seasonalBlink.intensity=Math.sin(game.time*2.3)>0.7?0.7:0.05;
   if(!game.liminal)return;
-  artMannequinUpdate();
+  artMannequinUpdate(dt);
   // products glitch: a shelf item near the player snaps its scale for a frame
   glitchT-=dt;
   if(glitchT<=0&&floorProdMesh){
@@ -2245,6 +2576,196 @@ function nearPortgen(x,z){ return portgens.some(p=>dist2d(p.x,p.z,x,z)<10); }
 ICONS.portgen='<rect x="4" y="10" width="14" height="9" rx="1" fill="currentColor"/><circle cx="16" cy="8" r="3" stroke="currentColor" stroke-width="2" fill="none"/><rect x="6" y="12" width="4" height="3" fill="#0a0c10"/>';
 ICONS.plate='<rect x="5" y="4" width="14" height="16" rx="1" fill="currentColor"/><circle cx="8" cy="7" r="1.2" fill="#0a0c10"/><circle cx="16" cy="7" r="1.2" fill="#0a0c10"/><circle cx="8" cy="17" r="1.2" fill="#0a0c10"/><circle cx="16" cy="17" r="1.2" fill="#0a0c10"/>';
 ICONS.booster='<rect x="4" y="9" width="10" height="7" rx="1" fill="currentColor"/><path d="M16 8l4 4-4 4" stroke="currentColor" stroke-width="2" fill="none"/><path d="M8 10l-1 3h2l-1 2" stroke="#0a0c10" stroke-width="1.4" fill="none"/>';
+
+// ============================================================================
+// LEVEL EXPANSION ART — real loot props, the Everscorch Expanse, signatures
+// ============================================================================
+
+// ---------- GROUND LOOT: real miniature prop models, not cubes ----------
+let _lootMats=null;
+function _lm(){ if(_lootMats)return _lootMats;
+  _lootMats={
+    cloth:new THREE.MeshStandardMaterial({color:0xbfae8e,roughness:1}),
+    metal:new THREE.MeshStandardMaterial({map:TX.metal,roughness:0.45,metalness:0.7}),
+    brass:new THREE.MeshStandardMaterial({color:0xc8a03a,roughness:0.35,metalness:0.8}),
+    red:new THREE.MeshStandardMaterial({color:0xa32633,roughness:0.7}),
+    wood:new THREE.MeshStandardMaterial({color:0x8a5c32,roughness:0.85}),
+    white:new THREE.MeshStandardMaterial({color:0xe8e6df,roughness:0.6}),
+    copper:new THREE.MeshStandardMaterial({color:0xb0652a,roughness:0.5,metalness:0.6}),
+    dark:new THREE.MeshStandardMaterial({color:0x22262c,roughness:0.6}),
+    gold:new THREE.MeshStandardMaterial({color:0xd8b84a,roughness:0.25,metalness:0.9,emissive:0x6a4a10}),
+  };
+  Object.values(_lootMats).forEach(m=>disposables.push(m));
+  return _lootMats;
+}
+function artLootModel(id){
+  const M=_lm(), g=new THREE.Group();
+  const add=(mesh)=>{g.add(mesh);return mesh;};
+  switch(id){
+    case 'cloth':{ // crumpled rag pile
+      for(let i=0;i<3;i++){ const b=_box(0.22-i*0.05,0.05,0.2-i*0.04,M.cloth,(Math.random()-0.5)*0.08,0.03+i*0.045,(Math.random()-0.5)*0.08); b.rotation.y=Math.random()*2; add(b); } break; }
+    case 'battery':{ const c=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.06,0.06,0.2,10)),M.metal); c.position.y=0.1; add(c);
+      const tip=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.02,0.02,0.03,8)),M.brass); tip.position.y=0.215; add(tip);
+      const band=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.062,0.062,0.06,10)),M.red); band.position.y=0.06; add(band); break; }
+    case 'bolts':{ for(let i=0;i<4;i++){ const b=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.02,0.02,0.09,6)),M.metal);
+      b.position.set((Math.random()-0.5)*0.16,0.03,(Math.random()-0.5)*0.16); b.rotation.z=Math.PI/2; b.rotation.y=Math.random()*3; add(b);} break; }
+    case 'pipe':{ const p=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.035,0.035,0.42,8)),M.metal);
+      p.rotation.z=Math.PI/2.2; p.position.y=0.05; add(p); break; }
+    case 'powder':{ const j=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.08,0.08,0.16,10)),M.red); j.position.y=0.08; add(j);
+      const cap=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.05,0.05,0.04,8)),M.dark); cap.position.y=0.18; add(cap); break; }
+    case 'handle':{ const h=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.03,0.04,0.36,7)),M.wood);
+      h.rotation.z=1.1; h.position.y=0.05; add(h); break; }
+    case 'wires':{ const t=new THREE.Mesh(geo(new THREE.TorusGeometry(0.1,0.028,7,14)),M.copper);
+      t.rotation.x=Math.PI/2; t.position.y=0.035; add(t); break; }
+    case 'shells':{ for(let i=0;i<3;i++){ const s=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.024,0.024,0.09,7)),M.red);
+      s.position.set(-0.06+i*0.06,0.045,0); add(s);
+      const rim=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.026,0.026,0.02,7)),M.brass); rim.position.set(-0.06+i*0.06,0.01,0); add(rim);} break; }
+    case 'rifleAmmo':{ for(let i=0;i<4;i++){ const r=new THREE.Mesh(geo(new THREE.ConeGeometry(0.018,0.1,6)),M.brass);
+      r.position.set(-0.08+i*0.05,0.05,0); add(r);} break; }
+    case 'medkit':{ const b=_box(0.24,0.12,0.18,M.white,0,0.06,0); add(b);
+      const cr=_box(0.12,0.03,0.03,M.red,0,0.125,0); add(cr); const cr2=_box(0.03,0.03,0.12,M.red,0,0.125,0); add(cr2); break; }
+    case 'coffee':{ const cup=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.05,0.04,0.12,10)),M.white); cup.position.y=0.06; add(cup);
+      const lid=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.055,0.055,0.02,10)),M.dark); lid.position.y=0.13; add(lid); break; }
+    case 'keycard': case 'wrongcard':{ const c=_box(0.16,0.012,0.1,id==='wrongcard'?M.dark:M.white,0,0.01,0); c.rotation.y=Math.random()*2; add(c);
+      const stripe=_box(0.16,0.014,0.03,id==='wrongcard'?M.red:M.dark,0,0.012,0.025); add(stripe); break; }
+    case 'mapfrag':{ const p=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.22,0.18)),M.white); p.rotation.x=-Math.PI/2+0.2; p.position.y=0.03; add(p); break; }
+    case 'proto':{ const b=_box(0.14,0.1,0.14,M.dark,0,0.05,0); add(b);
+      const lens=new THREE.Mesh(geo(new THREE.SphereGeometry(0.04,8,6)),M.brass); lens.position.y=0.12; add(lens); break; }
+    case 'realitykey':{ const shaft=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.02,0.02,0.24,8)),M.gold); shaft.rotation.z=Math.PI/2; shaft.position.y=0.06; add(shaft);
+      const bow=new THREE.Mesh(geo(new THREE.TorusGeometry(0.05,0.015,6,12)),M.gold); bow.position.set(-0.12,0.06,0); add(bow);
+      const tooth=_box(0.03,0.06,0.02,M.gold,0.1,0.03,0); add(tooth); break; }
+    case 'pressure':{ const b=_box(0.2,0.16,0.16,M.metal,0,0.08,0); add(b);
+      const gauge=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.04,0.04,0.02,10)),M.white); gauge.rotation.x=Math.PI/2; gauge.position.set(0,0.14,0.09); add(gauge); break; }
+    default:{ const b=_box(0.16,0.16,0.16,M.wood,0,0.08,0); b.rotation.y=Math.random()*2; add(b); }
+  }
+  return g;
+}
+
+// ---------- SIGNATURE / QUEST DROPS per level ----------
+function spawnSignatureLoot(biome,rng){
+  const place=(id,n)=>{ for(let i=0;i<n;i++){ for(let t=0;t<40;t++){
+    const cx=(8+rng()*(GRID_W-16))|0, cz=(8+rng()*(GRID_D-16))|0;
+    if(grid[gi(cx,cz)]===G_WALK&&!nearRooms(cx,cz)){ const [wx,wz]=cellToWorld(cx,cz);
+      spawnPickup(wx,wz,id,1,true); break; } } } };
+  if(biome==='LV404')place('wrongcard',1);      // the key to APO-∞
+  if(biome==='LV234')place('mapfrag',2);
+  if(biome==='LV100')place('proto',3);
+  if(biome==='LV000')place('keycard',2);
+  if(biome==='LV777'){ place('coffee',3); place('medkit',2); }
+}
+
+// ---------- THE EVERSCORCH EXPANSE: Sun, Guardian, Gate ----------
+let sorrowSun=null, guardian=null, escapeGate=null;
+function artEverscorchDress(rng){
+  // molten sky glow strip along the ceiling line
+  const skyMat=new THREE.MeshBasicMaterial({color:0xff5518,transparent:true,opacity:0.25}); disposables.push(skyMat);
+  const glow=new THREE.Mesh(geo(new THREE.PlaneGeometry(GRID_W,GRID_D)),skyMat);
+  glow.rotation.x=Math.PI/2; glow.position.y=CFG.wallH-0.4; world.add(glow);
+
+  // THE SORROW SUN — a burning celestial body drifting over the sand
+  const sunMat=new THREE.MeshBasicMaterial({color:0xffcc66}); disposables.push(sunMat);
+  const core=new THREE.Mesh(geo(new THREE.SphereGeometry(1.1,14,10)),sunMat);
+  const halo=new THREE.Mesh(geo(new THREE.SphereGeometry(1.7,12,8)),
+    new THREE.MeshBasicMaterial({color:0xff6a22,transparent:true,opacity:0.3}));
+  disposables.push(halo.material);
+  const sunG=new THREE.Group(); sunG.add(core); sunG.add(halo);
+  const sunLight=new THREE.PointLight(0xff8833,3.2,40,1.6); sunG.add(sunLight);
+  sunG.position.set(0,3.4,0); world.add(sunG);
+  sorrowSun={g:sunG,x:0,z:0,stormIn:16,warned:false};
+
+  // THE GUARDIAN OF ETERNESS — radiant golden judge before the Gate
+  const M=_lm();
+  const gx=HALF_W-10, gz=0;
+  const G=new THREE.Group();
+  G.add(_box(0.7,1.4,0.5,M.gold,0,1.5,0));                       // torso
+  G.add(_box(0.3,1.0,0.3,M.gold,-0.22,0.5,0)); G.add(_box(0.3,1.0,0.3,M.gold,0.22,0.5,0));
+  const head=_box(0.4,0.45,0.4,M.gold,0,2.5,0); G.add(head);
+  // wings of molten light
+  const wingMat=new THREE.MeshBasicMaterial({color:0xffd77a,transparent:true,opacity:0.55,side:THREE.DoubleSide});
+  disposables.push(wingMat);
+  [-1,1].forEach(s=>{ const w=new THREE.Mesh(geo(new THREE.PlaneGeometry(1.8,2.6)),wingMat);
+    w.position.set(s*1.1,1.9,-0.3); w.rotation.y=s*0.5; w.rotation.z=s*0.25; G.add(w); G.userData['wing'+s]=w; });
+  // sword of the sun
+  const sword=_box(0.09,2.6,0.09,M.gold,0.62,1.4,0.3); sword.rotation.x=0.2; G.add(sword);
+  const gLight=new THREE.PointLight(0xffd77a,2,16,1.8); gLight.position.y=2; G.add(gLight);
+  G.position.set(gx,0,gz); G.rotation.y=-Math.PI/2; world.add(G);
+  guardian={g:G,x:gx,z:gz,judged:false,warnings:0,head};
+
+  // GATE OF ESCAPE — the golden arch behind the Guardian
+  const arch=new THREE.Group();
+  [-1,1].forEach(s=>{ const p=_box(0.6,4.4,0.6,M.gold,s*1.6,2.2,0); arch.add(p); });
+  arch.add(_box(4.0,0.6,0.6,M.gold,0,4.5,0));
+  const veil=new THREE.Mesh(geo(new THREE.PlaneGeometry(2.6,3.9)),
+    new THREE.MeshBasicMaterial({color:0xfff2c8,transparent:true,opacity:0.35}));
+  disposables.push(veil.material); veil.position.y=2.1; arch.add(veil);
+  const ax=HALF_W-5, az=0;
+  arch.position.set(ax,0,az); arch.rotation.y=-Math.PI/2; world.add(arch);
+  escapeGate={g:arch,x:ax,z:az,veil};
+  // keep the approach lane clear in the grid
+  for(let x=GRID_W-14;x<GRID_W-2;x++)for(let z=(GRID_D/2|0)-3;z<(GRID_D/2|0)+3;z++)
+    if(grid[gi(x,z)]===G_SHELF)grid[gi(x,z)]=G_WALK;
+  interactables.push({x:ax,z:az,r:2.6,dur:2.5,prompt:'',
+    getPrompt:()=>((inv.counts.realitykey||0)>0?'Pass Through the Gate of Escape [hold E]':'The Gate is sealed. The Guardian holds the Key.'),
+    canUse:()=>(inv.counts.realitykey||0)>0,
+    onDone:()=>{ if(typeof winGame==='function')winGame(); }});
+}
+function artApoReset(){ sorrowSun=null; guardian=null; escapeGate=null; }
+
+// per-frame Everscorch logic: burning air, wandering Sun, judgment
+function apoUpdate(dt){
+  if(game.biome!=='LVAPO')return;
+  // the air burns matter — mercy zone near the Gate
+  const nearGate=escapeGate&&dist2d(player.x,player.z,escapeGate.x,escapeGate.z)<8;
+  if(!nearGate){ player.hp-=1.1*dt; if(player.hp<=0)die('heat'); addFear(dt*1.5); }
+  if(sorrowSun){
+    // wandering: slow lissajous drift across the expanse
+    sorrowSun.x=Math.sin(game.time*0.07)*(HALF_W-18);
+    sorrowSun.z=Math.cos(game.time*0.05)*(HALF_D-14);
+    sorrowSun.g.position.set(sorrowSun.x,3.4+Math.sin(game.time*0.8)*0.4,sorrowSun.z);
+    // direct exposure melts living matter — spires cast survivable shadow
+    const d=dist2d(player.x,player.z,sorrowSun.x,sorrowSun.z);
+    const exposed=losClear(player.x,player.z,sorrowSun.x,sorrowSun.z);
+    if(exposed&&d<26){ player.hp-=(3.4*(1-d/26))*dt; player.dmgFlash=Math.max(player.dmgFlash,0.25);
+      if(player.hp<=0)die('sun'); }
+    // light storms: warning, then a flash that punishes the exposed
+    sorrowSun.stormIn-=dt;
+    if(sorrowSun.stormIn<3&&!sorrowSun.warned){ sorrowSun.warned=true;
+      subtitle('The Sorrow Sun swells. FIND SHADOW.','#ffb347',3); AudioEngine.staticBurst(1.5,0.1); }
+    if(sorrowSun.stormIn<=0){ sorrowSun.stormIn=17+Math.random()*14; sorrowSun.warned=false;
+      flashLightning(); AudioEngine.thunder();
+      if(losClear(player.x,player.z,sorrowSun.x,sorrowSun.z)){ damagePlayer(24,'sun'); subtitle('The light finds you.','#ff8855',2.5); } }
+  }
+  if(guardian&&!guardian.judged){
+    // idle: wings breathe, head tracks the player
+    guardian.g.userData['wing-1'].rotation.z=-0.25-Math.sin(game.time*1.2)*0.08;
+    guardian.g.userData['wing1'].rotation.z=0.25+Math.sin(game.time*1.2)*0.08;
+    guardian.head.rotation.y=Math.atan2(player.x-guardian.x,player.z-guardian.z)+Math.PI/2;
+    const d=dist2d(player.x,player.z,guardian.x,guardian.z);
+    const humble=player.crouch&&SLOTS[player.slot]==='crowbar';
+    if(d<7&&humble){
+      guardian.judged=true;
+      subtitle('THE GUARDIAN OF ETERNESS: "You kneel. You carry no fire. The store did not keep you."','#ffd77a',6);
+      setTimeout(()=>{ if(game.state==='play'){ addItem('realitykey',1);
+        subtitle('It places the REALITY KEY in your hands. The Gate will open.','#ffd77a',5); AudioEngine.chime(); } },3500);
+    } else if(d<6&&!humble){
+      guardian.warnCd=(guardian.warnCd||0)-dt;
+      if(guardian.warnCd<=0){ guardian.warnCd=3;
+        guardian.warnings++;
+        if(guardian.warnings===1)subtitle('THE GUARDIAN OF ETERNESS raises the sword of the sun. Kneel. Holster the fire.','#ffb347',4);
+        else { damagePlayer(30,'guardian'); shakeCam(1.4);
+          subtitle('Judgment. The light takes its tithe.','#ff8855',3); } }
+    }
+  }
+}
+function playerHasWon(){ return game.state==='won'; }
+
+// icons for the level-expansion items
+ICONS.coffee='<path d="M6 8h10v8a4 4 0 01-4 4h-2a4 4 0 01-4-4z" fill="currentColor"/><path d="M16 10h2a2 2 0 010 4h-2" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M9 4c0 1.5 1 1.5 1 3M12 4c0 1.5 1 1.5 1 3" stroke="currentColor" stroke-width="1.4" fill="none"/>',
+ICONS.keycard='<rect x="3" y="7" width="18" height="11" rx="1.5" fill="currentColor"/><rect x="3" y="9.5" width="18" height="2.5" fill="#0a0c10"/><rect x="5" y="14" width="6" height="1.6" fill="#0a0c10"/>';
+ICONS.wrongcard='<rect x="3" y="7" width="18" height="11" rx="1.5" fill="currentColor"/><rect x="3" y="9.5" width="18" height="2.5" fill="#a32633"/><path d="M15 13.5l4 4M19 13.5l-4 4" stroke="#a32633" stroke-width="1.6"/>';
+ICONS.mapfrag='<path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z" fill="currentColor" opacity="0.85"/><path d="M9 4v14M15 6v14" stroke="#0a0c10" stroke-width="1.2"/>';
+ICONS.proto='<rect x="5" y="8" width="14" height="10" rx="2" fill="currentColor"/><circle cx="12" cy="6" r="2.5" stroke="currentColor" stroke-width="1.6" fill="none"/><circle cx="12" cy="13" r="2" fill="#0a0c10"/>';
+ICONS.realitykey='<circle cx="7" cy="12" r="3.4" stroke="currentColor" stroke-width="2" fill="none"/><path d="M10.4 12H21M17 12v3.4M19.6 12v2.4" stroke="currentColor" stroke-width="2"/>';
 
 // ================================ SECTION 11: INTERACTION ENGINE ===========
 function findInteractTarget(){
@@ -2346,7 +2867,9 @@ function updateShift(dt){
   if(game.shiftClock>=len){
     game.shiftClock=0; game.announced=false;
     game.shift=game.shift==='MORNING'?'NIGHT':'MORNING';
-    if(game.shift==='NIGHT'){ spawnNightWave(); addFear(12); }
+    // safe / anomalous levels don't run a night wave — their rules are their own
+    const waveExempt=['LV777','LVAPO','LV000','LV100','LV12245'].includes(game.biome);
+    if(game.shift==='NIGHT'){ if(!waveExempt)spawnNightWave(); addFear(12); }
     else { game.day++;
       // hostile extras despawn at dawn
       enemies.filter(e=>e.type==='manager'||e.type==='specter').forEach(e=>e.despawn());
@@ -2355,8 +2878,11 @@ function updateShift(dt){
     }
     updateLightingMood();
   }
-  el('shiftLabel').textContent=(game.shift==='MORNING'?'STORE OPEN · ':'STORE CLOSED · ')+fmtTime(len-game.shiftClock);
-  el('shiftLabel').style.color=game.shift==='MORNING'?'#cfe8b8':'#ff8877';
+  if(game.biome==='LVAPO'){ el('shiftLabel').textContent='THERE ARE NO SHIFTS HERE'; el('shiftLabel').style.color='#ff8855'; }
+  else{
+    el('shiftLabel').textContent=(game.shift==='MORNING'?'STORE OPEN · ':'STORE CLOSED · ')+fmtTime(len-game.shiftClock);
+    el('shiftLabel').style.color=game.shift==='MORNING'?'#cfe8b8':'#ff8877';
+  }
 }
 
 function updatePower(dt){
@@ -2503,6 +3029,13 @@ function updateLightingMood(initial){
   scene.fog.density=player.nvg?fogD*0.5:fogD;
   scene.fog.color.setHex(game.fogColorHex||0x000000);
   scene.background=new THREE.Color(game.power==='OFF'?0x000000:game.shift==='MORNING'?0x14161a:0x050507);
+  // THE EVERSCORCH: no shifts, no fixtures — a constant molten furnace glow
+  if(game.biome==='LVAPO'){
+    ambientLight.color.setHex(0xff9a5a); ambientLight.intensity=0.55;
+    hemiLight.intensity=0.25;
+    scene.background=new THREE.Color(0x2a0c04);
+    scene.fog.density=0.028; scene.fog.color.setHex(0x2a0e04);
+  } else ambientLight.color.setHex(0xbfc4cc);
   // fixture states
   fixtures.forEach(f=>{
     const on=game.power==='ON'&&(game.shift==='MORNING'||f.litAtNight);
@@ -2626,21 +3159,46 @@ function updateHazards(dt){
 }
 
 // ================================ SECTION 18: ELEVATOR ======================
+// ---- SCP level intro card ----
+const CLASS_COLORS={SAFE:'#7ac47a','TICONDEROGA':'#d8c96a',EUCLID:'#e8a04a',
+  'EUCLID → KETER':'#e07040',KETER:'#e04a4a','ARCHON-SAFE':'#6aa8d8',APOLLYON:'#ff3a6a'};
+function showLevelCard(biome,secs){
+  const m=LEVEL_META[biome]||{lv:'???',name:biome,clazz:'PENDING',intro:''};
+  el('lcLevel').textContent='LEVEL '+m.lv;
+  el('lcName').textContent=m.name;
+  const cl=el('lcClass'); cl.textContent='CLASS: '+m.clazz;
+  cl.style.color=CLASS_COLORS[m.clazz]||'#e8a04a';
+  el('lcIntro').textContent=m.intro;
+  const danger=/KETER|APOLLYON/.test(m.clazz);
+  el('lcWarn').style.display=danger?'block':'none';
+  const card=el('levelCard'); card.style.display='flex';
+  card.classList.toggle('danger',danger);
+  clearTimeout(showLevelCard._t);
+  showLevelCard._t=setTimeout(()=>card.style.display='none',secs*1000);
+  if(danger){ AudioEngine.staticBurst(1.4,0.1); AudioEngine.thunder(); }
+}
+
 function startElevatorTransit(){
   elevatorInfo.busy=true; game.state='transit';
-  elevatorInfo.doors.visible=true;
   const px=elevatorInfo.x, pz=elevatorInfo.z;
   player.x=px; player.z=pz; cancelInteract();
   AudioEngine.elevator(true); AudioEngine.staticBurst(1,0.05);
+  // announce the destination — the panel already knows where you're going
+  const destBiome=previewBiome(game.floor+1);
+  showLevelCard(destBiome,10.5);
   intercom(randPick(Math.random,[
     'Going down.',
     'Thank you for shopping with us. And below us.',
     'Now arriving: housewares, garden, and the dark.',
     'Floor '+(game.floor+1)+'. Everything must go.',
   ]),'creepy');
+  // door slide animation state
+  const doors=elevatorInfo.doors;
+  doors.visible=true; doors.position.y=6;
   let t=0; const dur=7.5;
   const iv=setInterval(()=>{
     t+=0.1;
+    doors.position.y=Math.max(2,6-t*5);                 // doors slide shut
     // cabin light flicker + shudder
     elevatorInfo.lamp.material=Math.random()<0.85?MAT.fixtureOn:MAT.fixtureOff;
     shakeCam(0.18);
@@ -2650,10 +3208,10 @@ function startElevatorTransit(){
       game.floor++;
       buildFloor(game.floor);
       const e=elevatorInfo; player.x=e.x; player.z=e.z; // arrive inside new cabin
-      e.doors.visible=false; e.busy=false;
+      // arrival: doors slide open
+      e.doors.position.y=6; e.doors.visible=false; e.busy=false;
       AudioEngine.elevator(false); AudioEngine.chime();
       game.state='play';
-      subtitle('FLOOR B'+game.floor+' — '+game.biome,'#ffd76a',4);
       rebuildFlowField(player.x,player.z);
     }
   },100);
@@ -2804,6 +3362,17 @@ function onKeyDown(code){
     case 'KeyC': break; // crouch handled per-frame
     case 'Tab': case 'KeyB': craftToggle(); break;
     case 'KeyJ': el('journalOverlay').style.display==='flex'?closeOverlays():openJournal(); break;
+    case 'KeyQ': // use first-aid kit
+      if((inv.counts.medkit||0)>0&&player.hp<CFG.hpMax){
+        inv.counts.medkit--; player.hp=Math.min(CFG.hpMax,player.hp+40);
+        refreshHotbar(); AudioEngine.click(800,0.15); subtitle('Patched up. (+40)','#9adf6a',2);
+      } break;
+    case 'KeyV': // drink coffee
+      if((inv.counts.coffee||0)>0){
+        inv.counts.coffee--; player.stamina=Math.min(CFG.staminaMax,player.stamina+60);
+        player.exhausted=false; addFear(-8);
+        refreshHotbar(); AudioEngine.click(1000,0.12); subtitle('Still warm. Somehow always still warm. (+60 stamina)','#d8c96a',2.5);
+      } break;
     case 'Escape': if(anyOverlayOpen())closeOverlays(); else setPaused(!game.paused); break;
     case 'KeyH': el('helpOverlay').style.display='flex'; game.paused=true; break;
   }
@@ -2818,17 +3387,32 @@ function die(src){
   document.exitPointerLock&&document.exitPointerLock();
   const causes={stocker:'Restocked by a Stocker.',roller:'Run down by a Rollback Roller.',greeter:'Greeted. Permanently.',
     manager:'The Night Shift Manager filed you under CLEARANCE.',crawler:'Dragged into the backrooms.',
-    specter:'The blackout kept you.',fire:'Burned in your own barricade line.',cart:'Trampled by the stampede.'};
+    specter:'The blackout kept you.',fire:'Burned in your own barricade line.',cart:'Trampled by the stampede.',
+    mannequin:'The mannequins finally reached you.',heat:'The air of the Everscorch took you apart.',
+    sun:'The Sorrow Sun looked at you directly.',guardian:'Judged unworthy by the Guardian of Eterness.'};
   el('deathCause').textContent=causes[src]||'The store closed around you.';
   el('deathStats').textContent=`Floors: B${game.floor} · Days: ${game.day} · Kills: ${game.kills} · Documents: ${game.notesFound.length}/${LORE.length}`;
   el('deathOverlay').style.display='flex';
 }
+// ---- THE TRUE ENDING ----
+function winGame(){
+  game.state='won';
+  document.exitPointerLock&&document.exitPointerLock();
+  el('winStats').textContent=`Floors survived: B${game.floor} · Days: ${game.day} · Kills: ${game.kills} · Documents: ${game.notesFound.length}/${LORE.length}`;
+  el('winOverlay').style.display='flex';
+  AudioEngine.chime(); AudioEngine.humLevel(0);
+  try{ window.speechSynthesis&&window.speechSynthesis.cancel(); }catch(e){}
+  intercom('Attention team member. Your shift has ended. You may clock out. You may finally clock out.','opening');
+}
+
 function restart(){
   el('deathOverlay').style.display='none';
+  el('winOverlay').style.display='none';
   Object.assign(game,{state:'play',floor:1,day:1,shift:'MORNING',shiftClock:0,announced:false,
     power:'ON',blackoutIn:CFG.blackoutMin+Math.random()*60,vaultState:{},weather:'CLEAR',weatherClock:30,
     kills:0,craftTier:1,converterPlaced:false,paused:false,notesFound:[],
-    floodStage:0,floodClock:0,floodDepth:0,baseFloodDepth:0,liminal:false});
+    floodStage:0,floodClock:0,floodDepth:0,baseFloodDepth:0,liminal:false,
+    apoVisited:false,lootBias:null});
   Object.assign(player,{hp:CFG.hpMax,stamina:CFG.staminaMax,fear:0,slot:0,shotgunLoaded:2,rifleLoaded:0,
     flashlight:false,nvg:false,carrying:null,x:0,z:0,slipping:0});
   inv.counts={}; inv.owned={crowbar:true};
@@ -2836,6 +3420,7 @@ function restart(){
   game.worldSeed=(Math.random()*1e9)|0;
   buildFloor(1);
   placePlayerAtSpawn();
+  showLevelCard('RETAIL',7);
 }
 function placePlayerAtSpawn(){
   // spawn near front-center, guaranteed walkable
@@ -2849,7 +3434,7 @@ function tick(now){
   requestAnimationFrame(tick);
   const dt=Math.min((now-lastT)/1000,0.05); lastT=now;    // fail-safe: dt cap
   if(game.state==='menu')return;
-  if(game.state==='dead'){ renderer.render(scene,camera); return; }
+  if(game.state==='dead'||game.state==='won'){ renderer.render(scene,camera); return; }
   if(game.paused){ renderer.render(scene,camera); return; }
   game.time+=dt;
 
@@ -2863,13 +3448,14 @@ function tick(now){
     if(typeof floodUpdate==='function')floodUpdate(dt);
     if(typeof liminalUpdate==='function')liminalUpdate(dt);
     if(typeof portgenUpdate==='function')portgenUpdate(dt);
+    if(typeof apoUpdate==='function')apoUpdate(dt);
   }
   updateLights(dt);
   updateHUD(dt);
   if(typeof artDustUpdate==='function')artDustUpdate(dt);
   // pickup bob
   const bob=Math.sin(game.time*3)*0.06;
-  for(const p of pickups)if(!p.taken)p.mesh.position.y=0.35+bob;
+  for(const p of pickups)if(!p.taken)p.mesh.position.y=0.06+bob*0.5; // grounded props, gentle float
   renderer.render(scene,camera);
 }
 
@@ -2906,6 +3492,7 @@ function boot(){
     intercom('Good morning team. The store is now open. Welcome, valued customers.','opening');
   };
   el('restartBtn').onclick=()=>{ restart(); el('cv').requestPointerLock(); };
+  el('winRestartBtn').onclick=()=>{ restart(); el('cv').requestPointerLock(); };
   el('resumeBtn').onclick=()=>{ setPaused(false); el('cv').requestPointerLock(); };
   document.querySelectorAll('.closeBtn').forEach(b=>b.onclick=()=>{ closeOverlays(); el('cv').requestPointerLock(); });
   refreshHotbar();
