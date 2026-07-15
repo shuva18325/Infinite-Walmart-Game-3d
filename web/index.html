@@ -26,11 +26,15 @@
   .slot{width:52px;height:52px;background:rgba(10,14,20,0.75);border:1px solid #33404d;border-radius:6px;
     position:relative;display:flex;align-items:center;justify-content:center;font-size:1.35em;}
   .slot.active{border-color:#ffd76a;box-shadow:0 0 12px rgba(255,215,106,0.35);}
-  .slot .cnt{position:absolute;bottom:1px;right:4px;font-size:0.42em;color:#cfe0ee;}
+  .slot .ico{color:#d5e2ee;display:flex;align-items:center;justify-content:center;}
+  .slot.active .ico{color:#ffe4a0;}
+  .slot .cnt{position:absolute;bottom:1px;right:4px;font-size:0.42em;color:#cfe0ee;font-variant-numeric:tabular-nums;}
   .slot .key{position:absolute;top:1px;left:4px;font-size:0.38em;color:#5d6f80;}
   #matbar{position:absolute;left:50%;transform:translateX(-50%);bottom:72px;font-size:0.82em;color:#9db0c0;
     background:rgba(8,10,14,0.55);padding:3px 12px;border-radius:10px;}
-  .mat{margin:0 6px;}
+  .mat{margin:0 7px;display:inline-flex;align-items:center;gap:2px;color:#aab8c6;}
+  .mat b{font-weight:600;font-variant-numeric:tabular-nums;}
+  .recipe i svg,.recipe b svg{vertical-align:middle;color:#cfe0ee;}
   #prompt{position:absolute;left:50%;top:58%;transform:translateX(-50%);display:none;
     background:rgba(8,10,14,0.8);border:1px solid #46586a;padding:8px 18px;border-radius:6px;font-size:0.95em;color:#ffe9b0;}
   #progress{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);width:54px;height:54px;border-radius:50%;display:none;}
@@ -64,7 +68,7 @@
 <canvas id="cv"></canvas>
 
 <div id="hud">
-  <div id="shiftLabel">🌤 OPEN 03:00</div>
+  <div id="shiftLabel">STORE OPEN · 03:00</div>
   <div id="floorLabel">FLOOR B1</div>
   <div id="dayLabel">DAY 1</div>
   <div id="raceLabel"></div>
@@ -291,7 +295,7 @@ const AudioEngine={
 };
 // Intercom voice: speechSynthesis with distorted static wrapper.
 function intercom(text,type){
-  subtitle('📢 '+text, type==='closing'?'#ff5544':'#ffe9a8', 5);
+  subtitle('PA — '+text, type==='closing'?'#ff5544':'#ffe9a8', 5);
   AudioEngine.chime(); AudioEngine.staticBurst(0.5,0.06);
   try{
     if('speechSynthesis' in window){
@@ -367,6 +371,9 @@ function wallRayDist(x,z,dx,dz,max){
 // ================================ SECTION 5: MATERIAL LIBRARY ==============
 let MAT={};
 function buildMaterials(){
+  // Art layer builds textured PBR materials (see game-art.js). Falls back to
+  // flat Lambert only if the art module failed to load.
+  if(typeof buildArtMaterials==='function'){ buildArtMaterials(); return; }
   MAT={
     floor:new THREE.MeshLambertMaterial({color:0x4a4a48}),
     floorBack:new THREE.MeshLambertMaterial({color:0x35322c}),
@@ -378,6 +385,7 @@ function buildMaterials(){
     register:new THREE.MeshLambertMaterial({color:0x33484f}),
     fixtureOn:new THREE.MeshBasicMaterial({color:0xf5f2dc}),
     fixtureOff:new THREE.MeshBasicMaterial({color:0x1a1a1a}),
+    fixtureHousing:new THREE.MeshLambertMaterial({color:0x9a9a96}),
     silhouette:new THREE.MeshBasicMaterial({color:0x000000}),
     eyes:new THREE.MeshBasicMaterial({color:0xff2211}),
     childEyes:new THREE.MeshBasicMaterial({color:0x88ccff}),
@@ -395,6 +403,11 @@ function buildMaterials(){
     cabin:new THREE.MeshLambertMaterial({color:0x484f57}),
     cart:new THREE.MeshLambertMaterial({color:0x8a9096}),
     emergency:new THREE.MeshBasicMaterial({color:0x550000}),
+    skin:new THREE.MeshLambertMaterial({color:0x9c8a76}),
+    vest:new THREE.MeshLambertMaterial({color:0x14315e}),
+    pants:new THREE.MeshLambertMaterial({color:0x2a2620}),
+    suit:new THREE.MeshLambertMaterial({color:0x101014}),
+    apron:new THREE.MeshLambertMaterial({color:0x1b3a20}),
   };
 }
 
@@ -429,8 +442,11 @@ function buildFloor(floorIdx){
   const dark=biome==='BACKROOMS';
 
   // ---- floor & ceiling ----
-  const floorMesh=new THREE.Mesh(geo(new THREE.PlaneGeometry(GRID_W,GRID_D)),dark?MAT.floorBack:MAT.floor);
+  const floorMat=dark?MAT.floorBack:MAT.floor;
+  if(floorMat.map){ floorMat.map.repeat.set(dark?GRID_W/7:GRID_W/4, dark?GRID_D/6:GRID_D/4); floorMat.map.needsUpdate=true; }
+  const floorMesh=new THREE.Mesh(geo(new THREE.PlaneGeometry(GRID_W,GRID_D)),floorMat);
   floorMesh.rotation.x=-Math.PI/2; world.add(floorMesh);
+  if(MAT.ceil.map){ MAT.ceil.map.repeat.set(GRID_W/4,GRID_D/4); MAT.ceil.map.needsUpdate=true; }
   const ceilMesh=new THREE.Mesh(geo(new THREE.PlaneGeometry(GRID_W,GRID_D)),MAT.ceil);
   ceilMesh.rotation.x=Math.PI/2; ceilMesh.position.y=CFG.wallH; world.add(ceilMesh);
 
@@ -468,6 +484,11 @@ function buildFloor(floorIdx){
 
   // ---- rain particle system (activated by weather) ----
   buildRain();
+
+  // ---- signage + ceiling detail + dust atmosphere (art layer) ----
+  if(typeof artSignage==='function'&&biome!=='BACKROOMS'){ artSignage(rng); artPriceBoards(rng); }
+  if(typeof artCeilingDetail==='function')artCeilingDetail(rng);
+  if(typeof artDust==='function')artDust();
 
   // ---- populate employees ----
   spawnPopulation(rng,floorIdx,biome);
@@ -574,16 +595,14 @@ function buildRetailAisles(rng,biome){
       z+=len+gap;
     }
   });
-  // instanced shelves: base + goods layer (visual fidelity on the cheap)
+  // Stocked gondola shelving with tinted product boxes (art layer).
+  if(typeof artStockShelves==='function'){ artStockShelves(segs); return; }
+  // fallback: flat instanced shelves
   const inst=new THREE.InstancedMesh(geo(new THREE.BoxGeometry(1,2.6,1)),MAT.shelf,segs.length);
-  const goods=new THREE.InstancedMesh(geo(new THREE.BoxGeometry(0.9,0.5,0.9)),MAT.shelfGoods,segs.length*2);
-  const dummy=new THREE.Object3D(); let i=0,j=0;
+  const dummy=new THREE.Object3D(); let i=0;
   segs.forEach(([x,z])=>{ const[wx,wz]=cellToWorld(x,z);
-    dummy.position.set(wx,1.3,wz); dummy.updateMatrix(); inst.setMatrixAt(i++,dummy.matrix);
-    dummy.position.set(wx,1.0,wz); dummy.updateMatrix(); goods.setMatrixAt(j++,dummy.matrix);
-    dummy.position.set(wx,2.0,wz); dummy.updateMatrix(); goods.setMatrixAt(j++,dummy.matrix); });
-  world.add(inst); world.add(goods);
-  buildRoomWallInstances();
+    dummy.position.set(wx,1.3,wz); dummy.updateMatrix(); inst.setMatrixAt(i++,dummy.matrix); });
+  world.add(inst); buildRoomWallInstances();
 }
 
 function buildBackrooms(rng){
@@ -606,8 +625,9 @@ function buildRegisters(rng){
   for(let x=18;x<GRID_W-20;x+=8){
     grid[gi(x,zr)]=G_PROPS; grid[gi(x+1,zr)]=G_PROPS;
     const [wx,wz]=cellToWorld(x,zr);
-    const m=new THREE.Mesh(geo(new THREE.BoxGeometry(2.4,1.1,1)),MAT.register); m.position.set(wx+0.5,0.55,wz); world.add(m);
-    const lane=new THREE.Mesh(geo(new THREE.BoxGeometry(0.3,1.4,0.3)),MAT.register); lane.position.set(wx+1.6,0.7,wz); world.add(lane);
+    const laneNo=1+((x-18)/8|0);
+    if(typeof artCheckout==='function')artCheckout(wx+0.5,wz,laneNo);
+    else { const m=new THREE.Mesh(geo(new THREE.BoxGeometry(2.4,1.1,1)),MAT.register); m.position.set(wx+0.5,0.55,wz); world.add(m); }
     const spot={x:wx+0.5,z:wz+1.1,searched:false};
     registerSpots.push(spot);
     interactables.push({x:spot.x,z:spot.z,r:1.6,dur:3,prompt:'',
@@ -622,8 +642,11 @@ function buildFixtures(rng,dark){
   const positions=[];
   for(let x=8;x<GRID_W-8;x+=8)for(let z=6;z<GRID_D-6;z+=8)positions.push(cellToWorld(x,z));
   const litFrac=dark?0.16:0.30;
+  const houseGeo=geo(new THREE.BoxGeometry(2.75,0.16,0.85));
   positions.forEach(([wx,wz])=>{
     const hash=Math.abs(Math.sin(wx*12.9898+wz*78.233)*43758.5453)%1;
+    // recessed metal housing around the tube
+    const house=new THREE.Mesh(houseGeo,MAT.fixtureHousing); house.position.set(wx,CFG.wallH-0.06,wz); world.add(house);
     const f={x:wx,z:wz,litAtNight:hash<litFrac,
       mesh:new THREE.Mesh(fixGeo,MAT.fixtureOn),flicker:0.4+hash};
     f.mesh.position.set(wx,CFG.wallH-0.15,wz); world.add(f.mesh); fixtures.push(f);
@@ -826,11 +849,29 @@ class Enemy{
   def(){ return ENEMY_DEFS[this.type]; }
   buildMesh(){
     const d=this.def();
-    if(this.type==='specter'){ const g=makeSilhouette(d.w,d.h,null); g.traverse(o=>{if(o.isMesh)o.material=MAT.specter;}); return g; }
-    const g=makeSilhouette(d.w,d.h,this.type==='child'?MAT.childEyes:MAT.eyes);
-    if(this.type==='roller'){ const cart=new THREE.Mesh(geo(new THREE.BoxGeometry(1,0.7,1.6)),MAT.cart); cart.position.set(0,0.45,0.6); g.add(cart); }
-    if(this.type==='crawler'){ g.scale.y=0.5; g.scale.x=1.6; }
+    // Specters stay ethereal silhouettes (no detailed body).
+    if(this.type==='specter'){ const g=makeSilhouette(d.w,d.h,null); g.traverse(o=>{if(o.isMesh)o.material=MAT.specter;}); this.headNode=g.userData.head; return g; }
+    // Distance LOD: detailed uniformed humanoid up close, pure-black
+    // silhouette down the aisle (the shadow-model aesthetic + performance).
+    const g=new THREE.Group();
+    if(typeof artHumanoid==='function'){
+      this.detail=artHumanoid(this.type,d); g.add(this.detail);
+      this.silo=makeSilhouette(d.w,d.h,this.type==='child'?MAT.childEyes:MAT.eyes);
+      if(this.type==='crawler'){ this.silo.scale.y=0.5; this.silo.scale.x=1.6; }
+      g.add(this.silo); this.silo.visible=false;
+      this.headNode=this.detail.userData.head;
+    } else {
+      const s=makeSilhouette(d.w,d.h,this.type==='child'?MAT.childEyes:MAT.eyes);
+      if(this.type==='roller'){ const cart=new THREE.Mesh(geo(new THREE.BoxGeometry(1,0.7,1.6)),MAT.cart); cart.position.set(0,0.45,0.6); s.add(cart); }
+      if(this.type==='crawler'){ s.scale.y=0.5; s.scale.x=1.6; }
+      g.add(s); this.headNode=s.userData.head;
+    }
     return g;
+  }
+  updateLOD(){
+    if(!this.detail||!this.silo)return;
+    const far=dist2d(this.x,this.z,player.x,player.z)>CFG.shadowSwapDist;
+    this.detail.visible=!far; this.silo.visible=far;
   }
   hostile(){ return game.shift==='NIGHT'||this.type==='crawler'||this.type==='specter'; }
   hearing(){ let h=this.def().hearing; if(game.weather==='STORM')h*=0.8; if(game.power==='OFF')h*=1.25; return h; }
@@ -854,6 +895,7 @@ class Enemy{
   update(dt){
     if(this.dead)return;
     this.animT+=dt; this.atkCd-=dt;
+    this.updateLOD&&this.updateLOD();
     if(this.stun>0){ this.stun-=dt; this.mesh.rotation.z=Math.sin(this.animT*40)*0.1; return; }
     this.mesh.rotation.z=0;
     const d=this.def();
@@ -939,8 +981,13 @@ class Enemy{
     const speed=Math.hypot(this.vx,this.vz);
     const distort=game.shift==='NIGHT'?1.8:1;
     this.mesh.position.y=Math.abs(Math.sin(this.animT*speed*1.6*distort))*0.09*distort;
-    if(game.shift==='NIGHT')this.mesh.userData&&this.mesh.children[1]&&(this.mesh.children[1].rotation.z=Math.sin(this.animT*13)*0.16);
-    else this.mesh.children[1]&&(this.mesh.children[1].rotation.z=0);
+    // eerie night head-twitch on whichever body is visible
+    if(this.headNode)this.headNode.rotation.z=game.shift==='NIGHT'?Math.sin(this.animT*13)*0.16:0;
+    // swing arms of the detailed model while moving
+    if(this.detail&&this.detail.visible&&this.detail.userData.armR){
+      const sw=Math.sin(this.animT*speed*2.4)*0.5*(speed>0.3?1:0);
+      this.detail.userData.armR.rotation.x=sw; this.detail.userData.armL.rotation.x=-sw;
+    }
   }
   // --- brains ---
   brainStocker(dt,d){ // blind — pure sound
@@ -1168,6 +1215,7 @@ function updatePlayer(dt){
   updateInteract(dt);
   updateCarry(dt);
   player.dmgFlash=Math.max(0,player.dmgFlash-dt*2);
+  if(typeof artUpdateViewmodel==='function')artUpdateViewmodel(dt,moving,player.running);
   syncCamera(dt);
 }
 function resolvePlayerCollision(){
@@ -1256,12 +1304,14 @@ function hitscan(spreadRad,dmg,maxRange){
 function fireShotgun(){
   for(let i=0;i<10;i++)hitscan(0.32,12,26);
   emitNoise(player.x,player.z,45,1,'gunshot'); AudioEngine.shot(0.5,0); shakeCam(1); muzzleFlash();
+  if(typeof artRecoil==='function')artRecoil(1);
   addFear(-4);
 }
 function fireRifle(){
   hitscan(0.03,16,60);
   // vault rifle ships SILENCED: tiny noise footprint
   emitNoise(player.x,player.z,7,0.4,'silenced'); AudioEngine.shot(0.12,0); muzzleFlash();
+  if(typeof artRecoil==='function')artRecoil(0.35);
 }
 let muzzleLight=null;
 function muzzleFlash(){ if(!muzzleLight){muzzleLight=new THREE.PointLight(0xffcc88,0,10,2);scene.add(muzzleLight);}
@@ -1319,6 +1369,458 @@ function placeFence(){
   world.add(m);
   traps.push({x:wx,z:wz,mesh:m,charges:5,cd:0});
   AudioEngine.weld();
+}
+
+// ============================================================================
+// ART LAYER — procedural grit textures, stocked props, humanoid enemies,
+// first-person viewmodel, dust/fog atmosphere. All assets generated at
+// runtime on <canvas> — zero external files, CSP-safe. Realism through
+// texture + geometry detail, kept performant via instancing + distance LOD.
+// ============================================================================
+
+// ---------- canvas helpers ----------
+function _cv(size){ const c=document.createElement('canvas'); c.width=c.height=size; return [c,c.getContext('2d')]; }
+function _cvWH(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return [c,c.getContext('2d')]; }
+function _tex(c,rx,ry){ const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; if(rx)t.repeat.set(rx,ry||rx); t.anisotropy=4; disposables.push(t); return t; }
+function _noise(x,ctx,size,amt,alpha){ for(let i=0;i<amt;i++){ const v=(Math.random()*255)|0; ctx.fillStyle=`rgba(${v},${v},${v},${alpha})`; ctx.fillRect(Math.random()*size,Math.random()*size,1,1);} }
+function _grime(ctx,size,n,col){ for(let i=0;i<n;i++){ const r=8+Math.random()*40; const g=ctx.createRadialGradient(Math.random()*size,Math.random()*size,0,Math.random()*size,Math.random()*size,r); const a=0.04+Math.random()*0.12; g.addColorStop(0,`rgba(${col},${a})`); g.addColorStop(1,`rgba(${col},0)`); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,0,0,7); ctx.fillRect(0,0,size,size);} }
+
+// ---------- TEXTURE FACTORY ----------
+const TextureFactory={
+  linoleum(){ const S=512,[c,x]=_cv(S); x.fillStyle='#c9c6bc'; x.fillRect(0,0,S,S);
+    // tile grid
+    const tile=S/4; for(let i=0;i<=4;i++){ x.strokeStyle='rgba(60,58,52,0.5)'; x.lineWidth=2; x.beginPath(); x.moveTo(i*tile,0); x.lineTo(i*tile,S); x.moveTo(0,i*tile); x.lineTo(S,i*tile); x.stroke(); }
+    // per-tile tint variation + speckle
+    for(let a=0;a<4;a++)for(let b=0;b<4;b++){ const t=(Math.random()*18-9)|0; x.fillStyle=`rgba(${180+t},${176+t},${166+t},0.5)`; x.fillRect(a*tile+2,b*tile+2,tile-4,tile-4); }
+    _noise(0,x,S,S*S*0.18,0.05);
+    // scuff arcs
+    for(let i=0;i<60;i++){ x.strokeStyle=`rgba(40,38,34,${0.05+Math.random()*0.12})`; x.lineWidth=1+Math.random()*2; x.beginPath(); const cx=Math.random()*S,cy=Math.random()*S,r=10+Math.random()*70,a0=Math.random()*7; x.arc(cx,cy,r,a0,a0+0.6+Math.random()); x.stroke(); }
+    // cracks
+    for(let i=0;i<7;i++){ x.strokeStyle='rgba(20,20,18,0.4)'; x.lineWidth=1; x.beginPath(); let px=Math.random()*S,py=Math.random()*S; x.moveTo(px,py); for(let s=0;s<6;s++){ px+=Math.random()*40-20; py+=Math.random()*40-20; x.lineTo(px,py);} x.stroke(); }
+    _grime(x,S,10,'40,36,28');
+    return _tex(c,6,5); },
+
+  concrete(){ const S=512,[c,x]=_cv(S); x.fillStyle='#43423f'; x.fillRect(0,0,S,S);
+    _noise(0,x,S,S*S*0.3,0.06); _grime(x,S,18,'20,20,18');
+    for(let i=0;i<5;i++){ x.strokeStyle='rgba(25,25,23,0.5)'; x.lineWidth=1; x.beginPath(); let px=Math.random()*S,py=0; x.moveTo(px,py); for(let s=0;s<10;s++){px+=Math.random()*30-15;py+=S/10;x.lineTo(px,py);} x.stroke(); }
+    // stains
+    for(let i=0;i<8;i++){ const g=x.createRadialGradient(Math.random()*S,Math.random()*S,0,Math.random()*S,Math.random()*S,60); g.addColorStop(0,'rgba(30,26,18,0.3)'); g.addColorStop(1,'rgba(30,26,18,0)'); x.fillStyle=g; x.fillRect(0,0,S,S); }
+    return _tex(c,7,6); },
+
+  metalShelf(){ const S=256,[c,x]=_cv(S); x.fillStyle='#7a8087'; x.fillRect(0,0,S,S);
+    for(let i=0;i<S;i+=2){ x.fillStyle=`rgba(255,255,255,${Math.random()*0.05})`; x.fillRect(i,0,1,S); x.fillStyle=`rgba(0,0,0,${Math.random()*0.06})`; x.fillRect(i+1,0,1,S); }
+    // sparse rust bloom along bottom edge, drawn as soft streaks not dots
+    for(let i=0;i<40;i++){ const yy=S-Math.random()*Math.random()*S*0.35; const xx=Math.random()*S;
+      const g=x.createLinearGradient(xx,yy-14,xx,S);
+      g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,`rgba(${110+Math.random()*50},${45+Math.random()*25},18,${0.18+Math.random()*0.2})`);
+      x.fillStyle=g; x.fillRect(xx-2,yy-14,4+Math.random()*5,S-yy+14); }
+    _grime(x,S,8,'40,30,20');
+    return _tex(c); },
+
+  cardboard(){ const S=128,[c,x]=_cv(S); x.fillStyle='#b8925e'; x.fillRect(0,0,S,S);
+    _noise(0,x,S,S*S*0.25,0.05);
+    x.strokeStyle='rgba(120,90,55,0.5)'; x.lineWidth=1; for(let i=0;i<S;i+=6){ x.beginPath(); x.moveTo(0,i); x.lineTo(S,i); x.stroke(); }
+    // tape strip
+    x.fillStyle='rgba(190,180,160,0.55)'; x.fillRect(0,S/2-9,S,18);
+    x.fillStyle='rgba(80,60,40,0.25)'; x.fillRect(0,S/2-9,S,2); x.fillRect(0,S/2+7,S,2);
+    return _tex(c); },
+
+  ceilingTile(){ const S=256,[c,x]=_cv(S); x.fillStyle='#d7d4c9'; x.fillRect(0,0,S,S);
+    // 2x2 acoustic tiles with recessed grid
+    x.strokeStyle='#8f8d84'; x.lineWidth=4; x.strokeRect(2,2,S-4,S-4); x.beginPath(); x.moveTo(S/2,0); x.lineTo(S/2,S); x.moveTo(0,S/2); x.lineTo(S,S/2); x.stroke();
+    // pinhole texture
+    for(let i=0;i<1400;i++){ x.fillStyle='rgba(150,148,140,0.4)'; x.fillRect(Math.random()*S,Math.random()*S,1,1); }
+    // water stains
+    for(let i=0;i<4;i++){ const cx=Math.random()*S,cy=Math.random()*S; const g=x.createRadialGradient(cx,cy,2,cx,cy,20+Math.random()*40); g.addColorStop(0,'rgba(120,95,55,0.35)'); g.addColorStop(0.7,'rgba(140,110,60,0.18)'); g.addColorStop(1,'rgba(140,110,60,0)'); x.fillStyle=g; x.fillRect(0,0,S,S); }
+    return _tex(c,4,3); },
+
+  wallPaint(){ const S=256,[c,x]=_cv(S); x.fillStyle='#6c727a'; x.fillRect(0,0,S,S);
+    _noise(0,x,S,S*S*0.12,0.04);
+    // scuffs low on the wall
+    for(let i=0;i<50;i++){ const yy=S*0.55+Math.random()*S*0.45; x.strokeStyle=`rgba(30,30,32,${0.04+Math.random()*0.1})`; x.lineWidth=1+Math.random()*3; x.beginPath(); x.moveTo(Math.random()*S,yy); x.lineTo(Math.random()*S,yy+Math.random()*8-4); x.stroke(); }
+    _grime(x,S,10,'25,25,28');
+    return _tex(c,5,2); },
+
+  plastic(dark){ const S=64,[c,x]=_cv(S); x.fillStyle=dark?'#2b3138':'#3a424b'; x.fillRect(0,0,S,S); _noise(0,x,S,S*S*0.1,0.05); return _tex(c); },
+
+  rust(){ const S=128,[c,x]=_cv(S); x.fillStyle='#5a5f63'; x.fillRect(0,0,S,S);
+    for(let i=0;i<S;i+=1){ x.fillStyle=`rgba(255,255,255,${Math.random()*0.04})`; x.fillRect(i,0,1,S); }
+    for(let i=0;i<400;i++){ x.fillStyle=`rgba(${110+Math.random()*70},${45+Math.random()*35},${18+Math.random()*18},${0.2+Math.random()*0.4})`; x.beginPath(); x.arc(Math.random()*S,Math.random()*S,1+Math.random()*3,0,7); x.fill(); }
+    return _tex(c); },
+
+  // generic label/sign drawer — real text, no emoji
+  label(text,opt={}){ const w=opt.w||256,h=opt.h||128,[c,x]=_cvWH(w,h);
+    x.fillStyle=opt.bg||'#0a4d9c'; x.fillRect(0,0,w,h);
+    if(opt.border){ x.strokeStyle=opt.border; x.lineWidth=opt.bw||8; x.strokeRect(4,4,w-8,h-8); }
+    x.fillStyle=opt.fg||'#fff'; x.textAlign='center'; x.textBaseline='middle';
+    x.font=`${opt.weight||'bold'} ${opt.size||60}px ${opt.font||'Arial Narrow, Arial, sans-serif'}`;
+    const lines=(''+text).split('\n'); const lh=(opt.size||60)*1.05;
+    lines.forEach((ln,i)=>x.fillText(ln,w/2,h/2+(i-(lines.length-1)/2)*lh,w-16));
+    if(opt.grime){ _grime(x,Math.max(w,h),6,'0,0,0'); _noise(0,x,Math.max(w,h),w*h*0.02,0.05); }
+    const t=new THREE.CanvasTexture(c); t.anisotropy=4; disposables.push(t); return t; },
+
+  face(kind){ const S=128,[c,x]=_cv(S); x.fillStyle='#b8a890'; x.fillRect(0,0,S,S); _noise(0,x,S,S*S*0.2,0.06);
+    // grimy pale skin base
+    x.fillStyle='rgba(90,70,60,0.15)'; x.fillRect(0,0,S,S);
+    if(kind==='greeter'){ // too-wide grin
+      x.strokeStyle='#3a2a24'; x.lineWidth=6; x.beginPath(); x.arc(S/2,S*0.5,S*0.34,0.15,Math.PI-0.15); x.stroke();
+      x.fillStyle='#e8e4d8'; for(let i=0;i<9;i++){ x.fillRect(S*0.2+i*S*0.07,S*0.62,S*0.05,S*0.09); }
+      x.fillStyle='#101012'; x.beginPath(); x.arc(S*0.36,S*0.36,7,0,7); x.arc(S*0.64,S*0.36,7,0,7); x.fill();
+    } else if(kind==='blind'){ // bandaged eyes
+      x.fillStyle='#c9c3b0'; x.fillRect(0,S*0.28,S,S*0.18); x.strokeStyle='rgba(120,20,20,0.5)'; x.lineWidth=2;
+      for(let i=0;i<6;i++){ x.beginPath(); x.moveTo(0,S*0.3+i*3); x.lineTo(S,S*0.32+i*3); x.stroke(); }
+      x.strokeStyle='#5a3a2a'; x.lineWidth=3; x.beginPath(); x.arc(S/2,S*0.66,10,0.1,Math.PI-0.1); x.stroke();
+    } else { x.fillStyle='#101012'; x.beginPath(); x.arc(S*0.36,S*0.4,6,0,7); x.arc(S*0.64,S*0.4,6,0,7); x.fill();
+      x.strokeStyle='#3a2a24'; x.lineWidth=3; x.beginPath(); x.moveTo(S*0.4,S*0.66); x.lineTo(S*0.6,S*0.66); x.stroke(); }
+    const t=new THREE.CanvasTexture(c); t.anisotropy=4; disposables.push(t); return t; },
+};
+
+// cached shared textures (built once)
+let TX={};
+function buildArtTextures(){
+  TX={
+    lino:TextureFactory.linoleum(), concrete:TextureFactory.concrete(),
+    metal:TextureFactory.metalShelf(), card:TextureFactory.cardboard(),
+    ceil:TextureFactory.ceilingTile(), wall:TextureFactory.wallPaint(),
+    plasticD:TextureFactory.plastic(true), plastic:TextureFactory.plastic(false),
+    rust:TextureFactory.rust(),
+  };
+}
+
+// ---------- ENVIRONMENT (cheap reflections for wet floor / metal) ----------
+function buildEnvironment(){
+  try{
+    const pmrem=new THREE.PMREMGenerator(renderer);
+    const s=new THREE.Scene();
+    const geoS=new THREE.SphereGeometry(50,16,8);
+    const canvas=document.createElement('canvas'); canvas.width=4; canvas.height=64;
+    const cx=canvas.getContext('2d'); const g=cx.createLinearGradient(0,0,0,64);
+    g.addColorStop(0,'#0a0c10'); g.addColorStop(0.5,'#20262e'); g.addColorStop(0.55,'#3a4048'); g.addColorStop(0.6,'#181c22'); g.addColorStop(1,'#050608');
+    cx.fillStyle=g; cx.fillRect(0,0,4,64);
+    const t=new THREE.CanvasTexture(canvas);
+    const m=new THREE.MeshBasicMaterial({map:t,side:THREE.BackSide}); s.add(new THREE.Mesh(geoS,m));
+    const env=pmrem.fromScene(s).texture; scene.environment=env; pmrem.dispose(); geoS.dispose(); m.dispose();
+  }catch(e){ /* graceful: no env map, materials still render via lights */ }
+}
+
+// ---------- MATERIALS (replaces flat placeholders) ----------
+function buildArtMaterials(){
+  buildArtTextures();
+  const std=(o)=>new THREE.MeshStandardMaterial(o);
+  const lam=(o)=>new THREE.MeshLambertMaterial(o);
+  MAT={
+    // polished linoleum: matte grime up close, long fluorescent streaks down
+    // the aisle (the reference-photo look) via low-rough envmap reflection
+    floor:std({map:TX.lino,color:0xb0ada4,roughness:0.68,metalness:0.0,envMapIntensity:0.16}),
+    floorBack:std({map:TX.concrete,roughness:0.92,metalness:0.02}),
+    wall:std({map:TX.wall,roughness:0.85,metalness:0.03}),
+    ceil:lam({map:TX.ceil}),
+    shelf:std({map:TX.metal,roughness:0.5,metalness:0.7,envMapIntensity:0.7}),
+    shelfGoods:std({map:TX.card,roughness:0.85,metalness:0}),
+    crate:std({map:TX.card,roughness:0.9,metalness:0}),
+    register:std({map:TX.plasticD,roughness:0.6,metalness:0.1}),
+    fixtureOn:new THREE.MeshBasicMaterial({color:0xf7f3dd}),
+    fixtureOff:new THREE.MeshBasicMaterial({color:0x181815}),
+    fixtureHousing:std({map:TX.metal,roughness:0.6,metalness:0.6,color:0x9a9a96}),
+    silhouette:new THREE.MeshBasicMaterial({color:0x000000}),
+    eyes:new THREE.MeshBasicMaterial({color:0xff2211}),
+    childEyes:new THREE.MeshBasicMaterial({color:0x9fd8ff}),
+    specter:new THREE.MeshBasicMaterial({color:0xbfd8e0,transparent:true,opacity:0.24}),
+    puddle:new THREE.MeshStandardMaterial({color:0x0c1a26,roughness:0.05,metalness:0.4,transparent:true,opacity:0.7,envMapIntensity:1.2}),
+    vault:std({map:TX.metal,roughness:0.45,metalness:0.85,color:0xb59a52,envMapIntensity:0.8}),
+    genr:std({map:TX.rust,roughness:0.7,metalness:0.6,color:0x3a5a3a}),
+    barr:std({map:TX.metal,roughness:0.55,metalness:0.7,color:0x8a8a92}),
+    fire:new THREE.MeshBasicMaterial({color:0xff7722,transparent:true,opacity:0.85}),
+    fence:new THREE.MeshBasicMaterial({color:0x66eaff}),
+    note:new THREE.MeshBasicMaterial({color:0xe8e2c8}),
+    loot:new THREE.MeshBasicMaterial({color:0x9adf6a}),
+    lootRare:new THREE.MeshBasicMaterial({color:0xffcc44}),
+    sign:new THREE.MeshBasicMaterial({color:0x0a4d9c}),
+    cabin:std({map:TX.metal,roughness:0.5,metalness:0.75,color:0x6a7178}),
+    cart:std({map:TX.metal,roughness:0.4,metalness:0.85,color:0xaab0b6,envMapIntensity:0.9}),
+    emergency:new THREE.MeshBasicMaterial({color:0x550000}),
+    // skin/uniform for humanoids
+    skin:std({color:0x9c8a76,roughness:0.85}),
+    vest:std({color:0x14315e,roughness:0.8}),     // Walmart blue, darkened/gritty
+    pants:std({color:0x2a2620,roughness:0.9}),
+    suit:std({color:0x101014,roughness:0.7}),
+    apron:std({color:0x1b3a20,roughness:0.85}),
+  };
+}
+
+// ---------- STOCKED GONDOLA SHELVES ----------
+// Replaces flat shelf boxes with framed uprights + shelf decks + tinted product boxes.
+function artStockShelves(segs){
+  if(!segs.length){ buildRoomWallInstances(); return; }
+  const n=segs.length;
+  // gondola spine (central upright slab) — collision cell is 1x1, spine thinner
+  const body=new THREE.InstancedMesh(geo(new THREE.BoxGeometry(0.55,2.7,1.0)),MAT.shelf,n);
+  // deck lips protruding toward the aisles, both faces x 3 levels
+  const deck=new THREE.InstancedMesh(geo(new THREE.BoxGeometry(0.5,0.05,1.0)),MAT.shelf,n*6);
+  // product rows sitting on the decks, FACING the aisles (x faces), 2 levels x 2 faces
+  const prod=new THREE.InstancedMesh(geo(new THREE.BoxGeometry(0.28,0.5,0.86)),MAT.shelfGoods,n*4);
+  const dummy=new THREE.Object3D(); const col=new THREE.Color();
+  const palette=[0xb23b2e,0xd98a1f,0x2f6fb0,0xdac13a,0x3f8f4a,0x9aa0a6,0xc0563b,0x6d4aa0,0xe8e4da,0x2c8f7a];
+  let bi=0,di=0,pi=0;
+  segs.forEach(([gx,gz])=>{ const [wx,wz]=cellToWorld(gx,gz);
+    dummy.rotation.set(0,0,0); dummy.scale.set(1,1,1);
+    dummy.position.set(wx,1.35,wz); dummy.updateMatrix(); body.setMatrixAt(bi++,dummy.matrix);
+    for(const side of [-1,1])for(let l=0;l<3;l++){
+      dummy.position.set(wx+side*0.4, 0.55+l*0.8, wz); dummy.updateMatrix(); deck.setMatrixAt(di++,dummy.matrix); }
+    for(const side of [-1,1])for(let l=0;l<2;l++){
+      // ~15% empty slots + jitter = looted, uneven stock
+      if(Math.random()<0.15){ dummy.scale.set(0.001,0.001,0.001); }
+      else dummy.scale.set(1,0.85+Math.random()*0.35,0.8+Math.random()*0.25);
+      dummy.position.set(wx+side*0.34, 0.85+l*0.8, wz+(Math.random()-0.5)*0.12);
+      dummy.rotation.y=(Math.random()-0.5)*0.12; dummy.updateMatrix();
+      prod.setMatrixAt(pi,dummy.matrix); col.setHex(palette[(Math.random()*palette.length)|0]); prod.setColorAt(pi,col); pi++; }
+  });
+  body.instanceMatrix.needsUpdate=deck.instanceMatrix.needsUpdate=prod.instanceMatrix.needsUpdate=true;
+  if(prod.instanceColor)prod.instanceColor.needsUpdate=true;
+  world.add(body); world.add(deck); world.add(prod);
+  buildRoomWallInstances();
+}
+
+// ---------- HANGING AISLE + DEPARTMENT SIGNAGE ----------
+const DEPTS=['GROCERY','HARDWARE','ELECTRONICS','TOYS','APPAREL','HOUSEHOLD','PHARMACY','SPORTING GOODS','GARDEN','AUTOMOTIVE'];
+function artSignage(rng){
+  // aisle-number markers over each shelf run column
+  for(let x=16,aisle=1;x<GRID_W-16;x+=8,aisle++){
+    const [wx,wz]=cellToWorld(x,20);
+    const tex=TextureFactory.label('AISLE\n'+aisle,{w:256,h:256,bg:'#0a4d9c',fg:'#ffffff',border:'#ffd23a',bw:10,size:66,grime:true});
+    const m=new THREE.Mesh(geo(new THREE.PlaneGeometry(2.4,2.4)),new THREE.MeshBasicMaterial({map:tex,transparent:true}));
+    m.position.set(wx+0.5,CFG.wallH-1.1,wz); world.add(m);
+    const back=m.clone(); back.rotation.y=Math.PI; back.position.z=wz+0.02; world.add(back);
+    // dept banner
+    const dep=DEPTS[(aisle-1)%DEPTS.length];
+    const dtex=TextureFactory.label(dep,{w:512,h:96,bg:'#12203a',fg:'#ffd23a',size:52,grime:true});
+    const dm=new THREE.Mesh(geo(new THREE.PlaneGeometry(3.4,0.64)),new THREE.MeshBasicMaterial({map:dtex,transparent:true}));
+    dm.position.set(wx+0.5,CFG.wallH-2.4,wz); world.add(dm);
+  }
+  // ROLLBACK price-drop danglers scattered — two front-facing planes
+  // back-to-back so the text never renders mirrored
+  const dangGeo=geo(new THREE.PlaneGeometry(0.7,0.52));
+  for(let i=0;i<10;i++){ const cx=(14+rng()*(GRID_W-28))|0, cz=(14+rng()*(GRID_D-24))|0; if(cellBlocked(cx,cz))continue;
+    const [wx,wz]=cellToWorld(cx,cz);
+    const tex=TextureFactory.label('ROLLBACK\n$'+(1+((rng()*19)|0))+'.'+((rng()*90+10)|0),{w:200,h:150,bg:'#ffd23a',fg:'#0a4d9c',size:38,grime:true});
+    const mat=new THREE.MeshBasicMaterial({map:tex,transparent:true});
+    const front=new THREE.Mesh(dangGeo,mat); front.position.set(wx,2.7,wz); front.rotation.y=rng()*6; world.add(front);
+    const back=new THREE.Mesh(dangGeo,mat); back.position.copy(front.position); back.rotation.y=front.rotation.y+Math.PI; world.add(back); }
+  // EXIT signs over perimeter
+  ['EXIT','EMPLOYEES ONLY','RETURNS'].forEach((t,i)=>{ const tex=TextureFactory.label(t,{w:256,h:80,bg:'#111',fg:i===0?'#e33':'#cfc',size:40});
+    const m=new THREE.Mesh(geo(new THREE.PlaneGeometry(2,0.62)),new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.DoubleSide}));
+    m.position.set(-HALF_W+3+i*8,CFG.wallH-0.7,-HALF_D+1); world.add(m); });
+}
+
+// ---------- CHECKOUT LANE ----------
+function artCheckout(wx,wz,laneNo){
+  const g=new THREE.Group();
+  const counter=new THREE.Mesh(geo(new THREE.BoxGeometry(2.6,1.05,1.1)),MAT.register); counter.position.set(0,0.52,0); g.add(counter);
+  const belt=new THREE.Mesh(geo(new THREE.BoxGeometry(2.2,0.08,0.5)),new THREE.MeshStandardMaterial({color:0x0c0c0e,roughness:0.6})); belt.position.set(0,1.08,0.2); g.add(belt);
+  const term=new THREE.Mesh(geo(new THREE.BoxGeometry(0.4,0.5,0.3)),MAT.register); term.position.set(0.9,1.3,-0.2); g.add(term);
+  const screen=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.32,0.24)),new THREE.MeshBasicMaterial({color:0x1a3a1a})); screen.position.set(0.9,1.42,-0.03); g.add(screen);
+  // lane number pole + light
+  const pole=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.04,0.04,2.6,6)),MAT.barr); pole.position.set(-1.2,1.8,0); g.add(pole);
+  const tex=TextureFactory.label(''+laneNo,{w:128,h:128,bg:'#0a4d9c',fg:'#fff',size:90,border:'#fff',bw:6});
+  const num=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.7,0.7)),new THREE.MeshBasicMaterial({map:tex,side:THREE.DoubleSide})); num.position.set(-1.2,3.1,0); g.add(num);
+  const laneLight=new THREE.Mesh(geo(new THREE.SphereGeometry(0.11,8,6)),MAT.fixtureOn); laneLight.position.set(-1.2,3.5,0); g.add(laneLight);
+  g.position.set(wx,0,wz); world.add(g); return g;
+}
+
+// ---------- CART ----------
+function artCartMesh(){
+  const g=new THREE.Group();
+  // basket = tapered box wireframe feel via thin metal
+  const basket=new THREE.Mesh(geo(new THREE.BoxGeometry(0.62,0.42,0.92)),MAT.cart); basket.position.y=0.62; g.add(basket);
+  const inner=new THREE.Mesh(geo(new THREE.BoxGeometry(0.5,0.34,0.8)),new THREE.MeshBasicMaterial({color:0x0a0c10})); inner.position.y=0.66; g.add(inner);
+  const handle=new THREE.Mesh(geo(new THREE.TorusGeometry(0.16,0.02,6,10,Math.PI)),MAT.cart); handle.rotation.z=Math.PI/2; handle.position.set(0,0.78,-0.5); g.add(handle);
+  for(const [dx,dz] of [[-0.24,0.36],[0.24,0.36],[-0.24,-0.36],[0.24,-0.36]]){ const w=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.1,0.1,0.05,10)),new THREE.MeshStandardMaterial({color:0x111,roughness:0.7})); w.rotation.z=Math.PI/2; w.position.set(dx,0.12,dz); g.add(w); }
+  return g;
+}
+
+// ---------- HUMANOID ENEMY MODELS ----------
+function _box(w,h,d,mat,x,y,z){ const m=new THREE.Mesh(geo(new THREE.BoxGeometry(w,h,d)),mat); m.position.set(x,y,z); return m; }
+function artHumanoid(type,def){
+  const g=new THREE.Group(); const H=def.h;
+  const uniform=type==='manager'?MAT.suit:MAT.vest;
+  // legs
+  g.add(_box(0.2,H*0.4,0.22,MAT.pants,-0.14,H*0.2,0));
+  g.add(_box(0.2,H*0.4,0.22,MAT.pants, 0.14,H*0.2,0));
+  // torso
+  const torso=_box(def.w*1.05,H*0.34,def.w*0.7,uniform,0,H*0.58,0); g.add(torso);
+  // name tag / badge on chest
+  const tagTex=TextureFactory.label(type==='greeter'?'HELLO\nmy name is':(type==='manager'?'MANAGER':'ASSOCIATE'),{w:128,h:96,bg:'#0a4d9c',fg:'#fff',size:26});
+  const tag=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.22,0.16)),new THREE.MeshBasicMaterial({map:tagTex})); tag.position.set(0.12,H*0.62,def.w*0.36+0.01); g.add(tag);
+  if(type==='stocker'){ const apron=_box(def.w*0.9,H*0.3,0.04,MAT.apron,0,H*0.5,def.w*0.36); g.add(apron); }
+  // arms
+  const armL=_box(0.12,H*0.36,0.14,uniform,-def.w*0.62,H*0.58,0); g.add(armL);
+  const armR=_box(0.12,H*0.36,0.14,uniform, def.w*0.62,H*0.58,0); g.add(armR);
+  g.userData.armR=armR; g.userData.armL=armL;
+  // neck + head
+  g.add(_box(0.1,0.08,0.1,MAT.skin,0,H*0.79,0));
+  const head=_box(0.26,0.28,0.26,MAT.skin,0,H*0.9,0); g.add(head); g.userData.head=head;
+  // face
+  const faceKind=type==='greeter'?'greeter':type==='stocker'?'blind':'normal';
+  const faceTex=TextureFactory.face(faceKind);
+  const face=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.24,0.26)),new THREE.MeshBasicMaterial({map:faceTex,transparent:true})); face.position.set(0,H*0.9,0.135); g.add(face);
+  // glowing eyes (hostility read even in dark) — greeters/manager only strong
+  if(type!=='stocker'){ const em=type==='child'?MAT.childEyes:MAT.eyes;
+    g.add(_box(0.04,0.04,0.02,em,-0.06,H*0.92,0.14)); g.add(_box(0.04,0.04,0.02,em,0.06,H*0.92,0.14)); }
+  // type-specific silhouette shaping
+  if(type==='manager'){ g.scale.set(1.15,1.0,1.15); head.scale.y=1.4; head.position.y=H*0.92; } // elongated
+  if(type==='crawler'){ g.rotation.x=1.15; g.position.y=-0.2; } // low crawl
+  if(type==='child'){ g.scale.setScalar(0.55); }
+  if(type==='roller'){ const cart=artCartMesh(); cart.scale.setScalar(1.15); cart.position.set(0,0,0.3); g.add(cart); g.position.y=0; }
+  g.userData.type=type;
+  return g;
+}
+
+// first-person weapon viewmodel ------------------------------------------------
+let VM={group:null,models:{},recoil:0,bob:0};
+function artBuildViewmodel(){
+  VM.group=new THREE.Group(); camera.add(VM.group); VM.group.position.set(0.22,-0.2,-0.5); VM.group.scale.setScalar(0.6);
+  // faint bounce light so the held weapon stays readable in pitch-black aisles
+  const bounce=new THREE.PointLight(0xffeedd,0.35,1.6,1.5); bounce.position.set(0,0.1,0.2); VM.group.add(bounce);
+  // crowbar — angled across the view like it's gripped
+  const crow=new THREE.Group();
+  const bar=_box(0.03,0.03,0.42,new THREE.MeshStandardMaterial({map:TX.rust,roughness:0.7,metalness:0.6,color:0xb04020}),0,0,-0.08);
+  const hook=_box(0.03,0.11,0.03,bar.material,0,0.055,-0.28); const claw=_box(0.03,0.03,0.09,bar.material,0,0.1,-0.33);
+  crow.add(bar);crow.add(hook);crow.add(claw);
+  crow.scale.setScalar(0.65); crow.rotation.set(0.55,0.3,0.3); crow.position.set(0.05,-0.05,0.08);
+  VM.models.crowbar=crow;
+  // pipe shotgun — pump-gun silhouette in scrap: worn steel receiver +
+  // twin pipe barrel/mag tube, wooden pump + stock, duct-tape wraps
+  const steel=new THREE.MeshStandardMaterial({map:TX.metal,roughness:0.45,metalness:0.75,color:0x8b9097});
+  const wood=new THREE.MeshStandardMaterial({color:0x7a5330,roughness:0.8});
+  const tapeM=new THREE.MeshStandardMaterial({color:0x2e2e30,roughness:0.95});
+  const sg=new THREE.Group();
+  sg.add(_box(0.055,0.075,0.22,steel,0,0.01,-0.02));                  // receiver
+  const brl=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.017,0.017,0.5,10)),steel); brl.rotation.x=Math.PI/2; brl.position.set(0,0.035,-0.32); sg.add(brl);
+  const mag=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.014,0.014,0.42,8)),steel); mag.rotation.x=Math.PI/2; mag.position.set(0,-0.005,-0.28); sg.add(mag);
+  sg.add(_box(0.05,0.045,0.14,wood,0,0.005,-0.3));                    // pump grip
+  sg.add(_box(0.045,0.1,0.2,wood,0,-0.06,0.16));                      // stock (drops back)
+  sg.add(_box(0.06,0.05,0.05,tapeM,0,0.01,-0.13));                    // tape wrap
+  sg.add(_box(0.048,0.08,0.05,wood,0,-0.055,0.03));                   // pistol grip
+  sg.rotation.set(0.02,0.06,0.04); VM.models.shotgun=sg;
+  // vault rifle (dark, silencer, drum mag)
+  const rf=new THREE.Group();
+  const gun=new THREE.MeshStandardMaterial({color:0x1a1c20,roughness:0.5,metalness:0.6});
+  rf.add(_box(0.05,0.08,0.5,gun,0,0,-0.08));
+  const sil=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.022,0.022,0.2,10)),gun); sil.rotation.x=Math.PI/2; sil.position.set(0,0.01,-0.42); rf.add(sil);
+  const drum=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.08,0.08,0.045,14)),gun); drum.rotation.x=Math.PI/2; drum.position.set(0,-0.085,-0.02); rf.add(drum);
+  rf.add(_box(0.045,0.1,0.05,gun,0,-0.08,0.12));
+  rf.add(_box(0.04,0.04,0.16,gun,0,-0.045,-0.26));                    // fore grip rail
+  rf.rotation.set(0.02,0.05,0.03); VM.models.rifle=rf;
+  // throw-hand: sleeved forearm + hand for molotov/emp/fence slots
+  const hand=new THREE.Group();
+  hand.add(_box(0.07,0.07,0.22,MAT.vest,0.01,-0.04,0.1));             // sleeve
+  hand.add(_box(0.075,0.06,0.1,MAT.skin,0,-0.02,-0.04));              // hand
+  hand.rotation.set(0.3,-0.1,0); VM.models.hand=hand;
+  Object.values(VM.models).forEach(m=>{ m.visible=false; VM.group.add(m); });
+}
+function artUpdateViewmodel(dt,moving,running){
+  if(!VM.group)return;
+  const slot=SLOTS[player.slot];
+  const key=slot==='crowbar'?'crowbar':slot==='shotgun'&&inv.owned.shotgun?'shotgun':slot==='rifle'&&inv.owned.rifle?'rifle':'hand';
+  Object.entries(VM.models).forEach(([k,m])=>m.visible=(k===key));
+  VM.recoil=Math.max(0,VM.recoil-dt*6);
+  VM.bob+=dt*(running?14:9)*(moving?1:0);
+  const bx=Math.sin(VM.bob)*0.012*(moving?1:0), by=Math.abs(Math.sin(VM.bob))*0.016*(moving?1:0);
+  const reloading=player.reload>0;
+  VM.group.position.set(0.28+bx, -0.26+by+(reloading?-0.12:0), -0.55+VM.recoil*0.12);
+  VM.group.rotation.set(VM.recoil*0.5, 0, reloading?Math.sin(game.time*12)*0.2:0);
+}
+function artRecoil(v){ VM.recoil=Math.min(1,VM.recoil+v); }
+
+// ---------- DUST MOTES ----------
+let dustSys=null;
+function artDust(){
+  const N=140; const g=new THREE.BufferGeometry(); const p=new Float32Array(N*3);
+  for(let i=0;i<N;i++){ p[i*3]=(Math.random()-0.5)*GRID_W; p[i*3+1]=Math.random()*CFG.wallH; p[i*3+2]=(Math.random()-0.5)*GRID_D; }
+  g.setAttribute('position',new THREE.BufferAttribute(p,3)); disposables.push(g);
+  const m=new THREE.PointsMaterial({color:0xbfc0c4,size:0.03,transparent:true,opacity:0.35,depthWrite:false});
+  const pts=new THREE.Points(g,m); pts.frustumCulled=false; world.add(pts);
+  dustSys={pts,p,N};
+}
+function artDustUpdate(dt){
+  if(!dustSys)return; const p=dustSys.p;
+  for(let i=0;i<dustSys.N;i++){ p[i*3+1]+=dt*0.12*Math.sin(i*1.3+game.time*0.4);
+    p[i*3]+=dt*0.05*Math.cos(i+game.time*0.3);
+    if(p[i*3+1]>CFG.wallH)p[i*3+1]=0.1; }
+  dustSys.pts.geometry.attributes.position.needsUpdate=true;
+  // keep dust following player region loosely
+  dustSys.pts.position.set(Math.round(player.x/GRID_W)*0,0,0);
+}
+
+// ---------- HUD ICONS (inline SVG, monochrome — replaces emoji) ----------
+const ICONS={
+  crowbar:'<path d="M6 4l3 3-7 9 2 2 9-7 3 3" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/>',
+  shotgun:'<rect x="3" y="9" width="14" height="4" rx="1" fill="currentColor"/><path d="M14 13l5 5v2h-3l-4-5z" fill="currentColor"/>',
+  rifle:'<rect x="2" y="10" width="17" height="3" fill="currentColor"/><rect x="19" y="9" width="3" height="5" fill="currentColor"/><rect x="9" y="13" width="3" height="5" fill="currentColor"/>',
+  molotov:'<path d="M10 3h4v3l2 5v8a2 2 0 01-2 2h-4a2 2 0 01-2-2v-8l2-5z" fill="currentColor" opacity="0.85"/><path d="M12 2c1 1 0 2 1 3" stroke="#ffb347" stroke-width="2" fill="none"/>',
+  emp:'<circle cx="12" cy="12" r="3" fill="currentColor"/><circle cx="12" cy="12" r="7" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1" fill="none" opacity="0.5"/>',
+  fence:'<rect x="4" y="6" width="2" height="14" fill="currentColor"/><rect x="18" y="6" width="2" height="14" fill="currentColor"/><path d="M6 9l12 3-12 3 12 3" stroke="#66eaff" stroke-width="1.5" fill="none"/>',
+  bolts:'<path d="M12 4l6 3.5v7L12 18l-6-3.5v-7z" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="11" r="2.5" fill="currentColor"/>',
+  powder:'<rect x="7" y="6" width="10" height="14" rx="2" fill="currentColor"/><rect x="9" y="3" width="6" height="4" fill="currentColor"/>',
+  pipe:'<rect x="3" y="9" width="18" height="5" rx="2" fill="currentColor"/><rect x="3" y="8" width="3" height="7" fill="currentColor" opacity="0.6"/>',
+  handle:'<rect x="10" y="3" width="4" height="18" rx="2" fill="currentColor"/>',
+  wires:'<path d="M3 8c4 0 4 8 8 8s4-8 8-8" stroke="currentColor" stroke-width="2" fill="none"/><path d="M3 14c4 0 4 4 8 4" stroke="#c0563b" stroke-width="2" fill="none"/>',
+  battery:'<rect x="4" y="8" width="15" height="9" rx="1" fill="currentColor"/><rect x="19" y="10" width="2" height="5" fill="currentColor"/><path d="M9 10l-1 4h3l-1 3" stroke="#0a0c10" stroke-width="1.5" fill="none"/>',
+  cloth:'<path d="M5 6h14v14l-3-2-4 2-4-2-3 2z" fill="currentColor"/>',
+  medkit:'<rect x="4" y="7" width="16" height="12" rx="2" fill="currentColor"/><path d="M12 9v8M8 13h8" stroke="#c0392b" stroke-width="2"/>',
+  shells:'<rect x="7" y="5" width="4" height="14" rx="2" fill="#c0563b"/><rect x="13" y="5" width="4" height="14" rx="2" fill="currentColor"/>',
+  rifleAmmo:'<rect x="9" y="10" width="6" height="10" rx="1" fill="currentColor"/><path d="M9 10l3-6 3 6z" fill="#d98a1f"/>',
+  pressure:'<rect x="6" y="8" width="12" height="12" rx="2" fill="currentColor"/><circle cx="12" cy="6" r="3" stroke="currentColor" stroke-width="2" fill="none"/><path d="M12 6v-2" stroke="currentColor" stroke-width="1.5"/>',
+  converter:'<path d="M4 20V11l5 3V11l5 3V7l6 0v13z" fill="currentColor"/>',
+  nvg:'<circle cx="8" cy="12" r="4" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="16" cy="12" r="4" stroke="currentColor" stroke-width="2" fill="none"/><path d="M4 9h16" stroke="currentColor" stroke-width="2"/>',
+  vest:'<path d="M8 4l4 3 4-3 3 4-2 3v9H7v-9L5 8z" fill="currentColor"/>',
+  boots:'<path d="M8 4h4v10h5a2 2 0 012 2v3H8z" fill="currentColor"/>',
+};
+function svgIcon(id,size=20){ const g=ICONS[id]||'<circle cx="12" cy="12" r="6" fill="currentColor"/>';
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" style="vertical-align:middle">${g}</svg>`; }
+
+// ---------- CEILING DETAIL: vents, sprinkler pipes, hanging conduit ----------
+function artCeilingDetail(rng){
+  // vent grilles (slat texture on planes, instanced placement)
+  const S=128; const c=document.createElement('canvas'); c.width=c.height=S; const x=c.getContext('2d');
+  x.fillStyle='#5a5e63'; x.fillRect(0,0,S,S);
+  x.fillStyle='#2c2f33'; for(let i=8;i<S;i+=14)x.fillRect(6,i,S-12,7);
+  x.strokeStyle='#1d1f22'; x.lineWidth=4; x.strokeRect(2,2,S-4,S-4);
+  const vt=new THREE.CanvasTexture(c); disposables.push(vt);
+  const ventMat=new THREE.MeshBasicMaterial({map:vt});
+  const ventGeo=geo(new THREE.PlaneGeometry(1.4,1.4));
+  for(let i=0;i<14;i++){
+    const wx=-HALF_W+6+rng()*(GRID_W-12), wz=-HALF_D+6+rng()*(GRID_D-12);
+    const v=new THREE.Mesh(ventGeo,ventMat); v.rotation.x=Math.PI/2; v.position.set(wx,CFG.wallH-0.02,wz); world.add(v);
+  }
+  // sprinkler / conduit pipe runs across the ceiling
+  const pipeMat=new THREE.MeshStandardMaterial({map:TX.rust,roughness:0.7,metalness:0.5,color:0x8a2a20});
+  const conduitMat=new THREE.MeshStandardMaterial({map:TX.metal,roughness:0.6,metalness:0.6,color:0x6a6f75});
+  for(let i=0;i<4;i++){
+    const zz=-HALF_D+8+i*(GRID_D-16)/3;
+    const p=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.07,0.07,GRID_W-6,8)),i%2?pipeMat:conduitMat);
+    p.rotation.z=Math.PI/2; p.position.set(0,CFG.wallH-0.35,zz); world.add(p);
+  }
+  // a few hanging dead wires
+  const wireMat=new THREE.MeshBasicMaterial({color:0x141414});
+  for(let i=0;i<8;i++){
+    const wx=-HALF_W+5+rng()*(GRID_W-10), wz=-HALF_D+5+rng()*(GRID_D-10);
+    const len=0.5+rng()*1.1;
+    const w=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.012,0.012,len,4)),wireMat);
+    w.position.set(wx,CFG.wallH-len/2,wz); w.rotation.z=(rng()-0.5)*0.25; world.add(w);
+  }
+}
+
+// ---------- SHELF-END PRICE BOARDS (black board, big white digits) ----------
+function artPriceBoards(rng){
+  for(let x=16,k=0;x<GRID_W-16;x+=8,k++){
+    if(rng()<0.4)continue;
+    const [wx,wz]=cellToWorld(x,14);
+    const price='$'+(1+((rng()*9)|0))+'.'+((rng()*88+10)|0);
+    const tex=TextureFactory.label('EVERYDAY LOW PRICE\n'+price,{w:256,h:170,bg:'#0c0d10',fg:'#f2f2ee',size:40,border:'#0a4d9c',bw:8,grime:true});
+    const m=new THREE.Mesh(geo(new THREE.PlaneGeometry(1.5,1.0)),new THREE.MeshBasicMaterial({map:tex,side:THREE.DoubleSide}));
+    m.position.set(wx+0.5,2.1,wz-1.2); world.add(m);
+  }
 }
 
 // ================================ SECTION 11: INTERACTION ENGINE ===========
@@ -1430,7 +1932,7 @@ function updateShift(dt){
     }
     updateLightingMood();
   }
-  el('shiftLabel').textContent=(game.shift==='MORNING'?'🌤 OPEN ':'🌒 CLOSED ')+fmtTime(len-game.shiftClock);
+  el('shiftLabel').textContent=(game.shift==='MORNING'?'STORE OPEN · ':'STORE CLOSED · ')+fmtTime(len-game.shiftClock);
   el('shiftLabel').style.color=game.shift==='MORNING'?'#cfe8b8':'#ff8877';
 }
 
@@ -1440,7 +1942,7 @@ function updatePower(dt){
     if(game.blackoutIn<=0)triggerBlackout('scheduled');
   } else {
     game.repairLeft-=dt;
-    el('raceLabel').textContent='⚡ BACKGROUND CREW REPAIR: '+fmtTime(game.repairLeft)+(vaultOutcome()==='UNRESOLVED'?' — beat them to the generator to open the VAULT':'');
+    el('raceLabel').textContent='POWER OUT — CREW REPAIR IN '+fmtTime(game.repairLeft)+(vaultOutcome()==='UNRESOLVED'?' — beat them to the generator to open the VAULT':'');
     if(game.repairLeft<=0){
       if(vaultOutcome()==='UNRESOLVED')resolveVault('LOCKED');
       powerRestore('crew');
@@ -1740,16 +2242,16 @@ function refreshHotbar(){
     const d=document.createElement('div');
     d.className='slot'+(i===player.slot?' active':'');
     let label='',count='';
-    if(id==='crowbar'){label='⛏️';count='';}
-    else if(id==='shotgun'){label='🔫';count=inv.owned.shotgun?player.shotgunLoaded+'|'+(inv.counts.shells||0):'—';}
-    else if(id==='rifle'){label='🎯';count=inv.owned.rifle?player.rifleLoaded+'|'+(inv.counts.rifleAmmo||0):'—';}
-    else {label=ITEMS[id].icon;count=(inv.counts[id]||0)||'—';}
+    if(id==='crowbar'){label=svgIcon('crowbar');count='';}
+    else if(id==='shotgun'){label=svgIcon('shotgun');count=inv.owned.shotgun?player.shotgunLoaded+'|'+(inv.counts.shells||0):'—';}
+    else if(id==='rifle'){label=svgIcon('rifle');count=inv.owned.rifle?player.rifleLoaded+'|'+(inv.counts.rifleAmmo||0):'—';}
+    else {label=svgIcon(id);count=(inv.counts[id]||0)||'—';}
     d.innerHTML=`<span class="ico">${label}</span><span class="cnt">${count}</span><span class="key">${i+1}</span>`;
     bar.appendChild(d);
   });
   // materials strip
   const mats=['bolts','powder','pipe','handle','wires','battery','cloth','medkit'];
-  el('matbar').innerHTML=mats.map(m=>`<span class="mat">${ITEMS[m].icon}${inv.counts[m]||0}</span>`).join('');
+  el('matbar').innerHTML=mats.map(m=>`<span class="mat">${svgIcon(m,14)}<b>${inv.counts[m]||0}</b></span>`).join('');
 }
 function cycleSlot(d){ player.slot=(player.slot+d+SLOTS.length)%SLOTS.length; refreshHotbar(); }
 function updateHUD(dt){
@@ -1775,8 +2277,8 @@ function openCraft(){
     const ok=hasItems(r.cost);
     const li=document.createElement('div');
     li.className='recipe'+(ok?'':' locked');
-    const cost=Object.entries(r.cost).map(([k,v])=>`${ITEMS[k].icon}${v}`).join(' ');
-    li.innerHTML=`<b>${ITEMS[r.out].icon} ${ITEMS[r.out].name}${r.n>1?' ×'+r.n:''}</b><i>${cost}</i><p>${r.desc}</p>`;
+    const cost=Object.entries(r.cost).map(([k,v])=>`${svgIcon(k,15)}${v}`).join(' ');
+    li.innerHTML=`<b>${svgIcon(r.out,17)} ${ITEMS[r.out].name}${r.n>1?' ×'+r.n:''}</b><i>${cost}</i><p>${r.desc}</p>`;
     if(ok)li.onclick=()=>{ craft(r); openCraft(); };
     list.appendChild(li);
   });
@@ -1886,6 +2388,7 @@ function tick(now){
   }
   updateLights(dt);
   updateHUD(dt);
+  if(typeof artDustUpdate==='function')artDustUpdate(dt);
   // pickup bob
   const bob=Math.sin(game.time*3)*0.06;
   for(const p of pickups)if(!p.taken)p.mesh.position.y=0.35+bob;
@@ -1903,9 +2406,17 @@ function boot(){
   camera.rotation.order='YXZ'; camera.position.y=CFG.eyeStand;
   ambientLight=new THREE.AmbientLight(0xbfc4cc,0.5); scene.add(ambientLight);
   hemiLight=new THREE.HemisphereLight(0xcccccc,0x222222,0.3); scene.add(hemiLight);
-  flashSpot=new THREE.SpotLight(0xfff6d8,2.2,26,0.5,0.4,1.5); flashSpot.visible=false;
+  // flashlight: tighter cone, soft penumbra, gentler decay — a beam, not a floodlight
+  flashSpot=new THREE.SpotLight(0xfff2d0,1.0,30,0.38,0.8,1.0); flashSpot.visible=false;
   scene.add(flashSpot); scene.add(flashSpot.target);
+  scene.add(camera);                                   // camera in graph so viewmodel renders
+  if(typeof buildEnvironment==='function')buildEnvironment();
   buildMaterials();
+  if(typeof artBuildViewmodel==='function')artBuildViewmodel();
+  // Persistent art (shared textures, viewmodel geometry, env) is built once
+  // here — drop it from the per-floor disposal list so floor rebuilds never
+  // free it. Per-floor assets tracked fresh from now on.
+  disposables=[];
   const resize=()=>{ renderer.setSize(innerWidth,innerHeight); camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); };
   addEventListener('resize',resize); resize();
   Input.init(canvas);
