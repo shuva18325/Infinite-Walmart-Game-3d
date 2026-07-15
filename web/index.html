@@ -282,6 +282,25 @@ const AudioEngine={
     const s=this.ctx.createBufferSource(),g=this.ctx.createGain();
     s.buffer=this._noiseBuf; s.loop=true; this._env(g,t,0.02,vol,len);
     s.connect(g).connect(this.master); s.start(t); s.stop(t+len+0.1); },
+  clank(){ if(!this.ready)return; const t=this.ctx.currentTime;
+    for(let i=0;i<3;i++){ const o=this.ctx.createOscillator(),g=this.ctx.createGain();
+      o.type='square'; o.frequency.value=180+Math.random()*400;
+      const st=t+i*0.16; this._env(g,st,0.002,0.14,0.12);
+      o.connect(g).connect(this.master); o.start(st); o.stop(st+0.18);} },
+  drip(){ if(!this.ready)return; const t=this.ctx.currentTime;
+    const o=this.ctx.createOscillator(),g=this.ctx.createGain();
+    o.type='sine'; o.frequency.setValueAtTime(1200,t); o.frequency.exponentialRampToValueAtTime(400,t+0.09);
+    this._env(g,t,0.003,0.1,0.12); o.connect(g).connect(this.master); o.start(t); o.stop(t+0.15); },
+  breath(vol){ // proximity breathing bed for the Faceless
+    if(!this.ready)return;
+    this.startBed('breath',()=>{ const s=this.ctx.createBufferSource(),g=this.ctx.createGain(),f=this.ctx.createBiquadFilter();
+      s.buffer=this._noiseBuf; s.loop=true; f.type='bandpass'; f.frequency.value=500; f.Q.value=1.2;
+      g.gain.value=0; s.connect(f).connect(g).connect(this.master); s.start();
+      const lfo=this.ctx.createOscillator(),lg=this.ctx.createGain();
+      lfo.frequency.value=0.28; lg.gain.value=0.5; lfo.connect(lg).connect(g.gain); lfo.start();
+      return {src:s,gain:g}; });
+    this.setBedLevel('breath',vol*0.14); },
+  humLevel(v){ this.setBedLevel('hum',v); },
   elevator(on){ if(!this.ready)return;
     if(on){ this.startBed('elev',()=>{ const o=this.ctx.createOscillator(),g=this.ctx.createGain(),f=this.ctx.createBiquadFilter();
       o.type='sawtooth'; o.frequency.value=46; f.type='lowpass'; f.frequency.value=120; g.gain.value=0.12;
@@ -302,6 +321,19 @@ function intercom(text,type){
       window.speechSynthesis.cancel();
       const u=new SpeechSynthesisUtterance(text);
       u.rate=0.92; u.pitch=type==='closing'||type==='creepy'?0.55:0.8; u.volume=0.9;
+      window.speechSynthesis.speak(u);
+    }
+  }catch(e){}
+}
+// Liminal-zone intercom: the announcement plays BACKWARDS — reversed text
+// through the synth at crushed pitch reads as wrong-language whispering.
+function intercomWhisper(text){
+  subtitle('PA — [ unintelligible ]','#8fa3b8',4);
+  AudioEngine.staticBurst(1.2,0.08);
+  try{
+    if('speechSynthesis' in window){
+      const u=new SpeechSynthesisUtterance(text.split('').reverse().join(''));
+      u.rate=0.65; u.pitch=0.1; u.volume=0.55;
       window.speechSynthesis.speak(u);
     }
   }catch(e){}
@@ -418,16 +450,42 @@ function disposeWorld(){
   enemies=[];interactables=[];barricades=[];pickups=[];puddles=[];leaks=[];fires=[];traps=[];carts=[];
   fixtures=[];litFixtures=[];registerSpots=[];
   elevatorInfo=null;generatorInfo=null;vaultInfo=null;armoryInfo=null;rainSys=null;
+  if(typeof artResetFloorState==='function')artResetFloorState();
   AudioEngine.fire(false);
 }
 function geo(g){ disposables.push(g); return g; }
 
+const LIMINAL_BIOMES=['YELLOW_HALL','EMPLOYEE_MAZE','SEASONAL','WRONG','CHECKOUTS','FLOODED'];
 function biomeFor(floorIdx,rng){
   if(floorIdx===1)return 'RETAIL';
   if(rng()<0.10)return 'ARMORY';
-  if(floorIdx>=4&&rng()<0.45)return 'BACKROOMS';
-  if(rng()<0.18)return 'COLD';
+  // deeper = more liminal; transitional zones between "real" floors
+  const liminalChance=Math.min(0.2+floorIdx*0.08,0.6);
+  if(rng()<liminalChance)return LIMINAL_BIOMES[(rng()*LIMINAL_BIOMES.length)|0];
+  if(floorIdx>=4&&rng()<0.4)return 'BACKROOMS';
   return 'RETAIL';
+}
+const isLiminal=b=>LIMINAL_BIOMES.includes(b);
+
+// Per-biome palette applied to the SHARED materials — only one floor exists
+// at a time, so tinting in place is safe and free.
+function applyBiomeTint(biome){
+  const t={
+    RETAIL:      {wall:0x8a9199,floor:0xb0ada4,ceil:0xffffff,fog:0x000000},
+    ARMORY:      {wall:0x7d8189,floor:0xa8a49a,ceil:0xf2efe6,fog:0x000000},
+    BACKROOMS:   {wall:0x6a6f75,floor:0xffffff,ceil:0xb9b4a5,fog:0x020202},
+    COLD:        {wall:0x9fb4c4,floor:0xc2cdd6,ceil:0xe8eef4,fog:0x02040a},
+    YELLOW_HALL: {wall:0xcbb768,floor:0xb3a05a,ceil:0xd8c98e,fog:0x141003},
+    EMPLOYEE_MAZE:{wall:0x4a6da8,floor:0x9a9c98,ceil:0xcfd4da,fog:0x020409},
+    SEASONAL:    {wall:0x7d6a70,floor:0xa89a9a,ceil:0xded4d4,fog:0x0a0406},
+    WRONG:       {wall:0x9aa1a8,floor:0xc4c1b8,ceil:0xffffff,fog:0x000000},
+    CHECKOUTS:   {wall:0x8a9199,floor:0xbdbab1,ceil:0xffffff,fog:0x000000},
+    FLOODED:     {wall:0x5a6a66,floor:0x8a948e,ceil:0x9aa39b,fog:0x010604},
+  }[biome]||{wall:0x8a9199,floor:0xb0ada4,ceil:0xffffff,fog:0x000000};
+  MAT.wall.color.setHex(t.wall);
+  MAT.floor.color.setHex(t.floor);
+  MAT.ceil.color=new THREE.Color(t.ceil);
+  game.fogColorHex=t.fog;
 }
 
 function buildFloor(floorIdx){
@@ -438,8 +496,9 @@ function buildFloor(floorIdx){
   const seed=(game.worldSeed*486187739+floorIdx*1000003)>>>0;
   const rng=mulberry32(seed);
   const biome=biomeFor(floorIdx,rng);
-  game.biome=biome;
-  const dark=biome==='BACKROOMS';
+  game.biome=biome; game.liminal=isLiminal(biome);
+  applyBiomeTint(biome);
+  const dark=biome==='BACKROOMS'||biome==='FLOODED'||biome==='YELLOW_HALL';
 
   // ---- floor & ceiling ----
   const floorMat=dark?MAT.floorBack:MAT.floor;
@@ -467,11 +526,21 @@ function buildFloor(floorIdx){
   const hasArmory=biome==='ARMORY'||rng()<0.14;
   if(hasArmory)buildArmory(rng);
 
-  // ---- aisles & shelving ----
-  if(biome==='BACKROOMS')buildBackrooms(rng); else buildRetailAisles(rng,biome);
+  // ---- layout per biome ----
+  switch(biome){
+    case 'BACKROOMS': case 'FLOODED': buildBackrooms(rng); break;
+    case 'YELLOW_HALL': buildRetailAisles(rng,biome,{len:12,lenVar:0,gap:2,gapVar:0}); break;   // hypnotic repetition
+    case 'SEASONAL':    buildRetailAisles(rng,biome,{len:4,lenVar:2,gap:6,gapVar:2}); break;    // sparse, exposed
+    case 'EMPLOYEE_MAZE': buildEmployeeMaze(rng); break;
+    case 'CHECKOUTS':   buildInfiniteCheckouts(rng); break;
+    default:            buildRetailAisles(rng,biome); break;
+  }
 
   // ---- registers (front) — hiding + search spots ----
-  if(biome!=='BACKROOMS')buildRegisters(rng);
+  if(!['BACKROOMS','FLOODED','EMPLOYEE_MAZE','CHECKOUTS'].includes(biome))buildRegisters(rng);
+
+  // ---- liminal set dressing ----
+  if(typeof artLiminalDress==='function')artLiminalDress(biome,rng);
 
   // ---- ceiling light fixtures (deterministic night lottery) ----
   buildFixtures(rng,dark);
@@ -486,9 +555,13 @@ function buildFloor(floorIdx){
   buildRain();
 
   // ---- signage + ceiling detail + dust atmosphere (art layer) ----
-  if(typeof artSignage==='function'&&biome!=='BACKROOMS'){ artSignage(rng); artPriceBoards(rng); }
+  if(typeof artSignage==='function'){
+    if(biome==='WRONG')artSignageWrong(rng);                       // corrupted
+    else if(!['BACKROOMS','FLOODED','EMPLOYEE_MAZE'].includes(biome)){ artSignage(rng); artPriceBoards(rng); }
+  }
   if(typeof artCeilingDetail==='function')artCeilingDetail(rng);
   if(typeof artDust==='function')artDust();
+  if(typeof artWaterPlane==='function')artWaterPlane(biome==='FLOODED'?0.16:0);
 
   // ---- populate employees ----
   spawnPopulation(rng,floorIdx,biome);
@@ -582,15 +655,16 @@ function buildArmory(rng){
 }
 const rngFrom=s=>mulberry32(s>>>0);
 
-function buildRetailAisles(rng,biome){
+function buildRetailAisles(rng,biome,opt){
+  opt=opt||{len:6,lenVar:8,gap:3,gapVar:3};
   const shelfRows=[]; const x0=16,x1=GRID_W-16;
   for(let x=x0;x<x1;x+=4){ shelfRows.push(x); }
   const segs=[];
   shelfRows.forEach(x=>{
     let z=14;
     while(z<GRID_D-16){
-      const len=6+Math.floor(rng()*8);
-      const gap=3+Math.floor(rng()*3);
+      const len=opt.len+Math.floor(rng()*(opt.lenVar+1));
+      const gap=opt.gap+Math.floor(rng()*(opt.gapVar+1));
       for(let zz=z;zz<Math.min(z+len,GRID_D-16);zz++){ grid[gi(x,zz)]=G_SHELF; grid[gi(x+1,zz)]=G_SHELF; segs.push([x,zz]); }
       z+=len+gap;
     }
@@ -618,6 +692,33 @@ function buildBackrooms(rng){
 }
 function nearRooms(x,z){ // keep spawn structures clear
   return (x>GRID_W-15&&z<13)||(x<15&&z<14)||(x<16&&z>GRID_D-16);
+}
+
+// EMPLOYEE-ONLY MAZE — corridor grid of blue walls, breakroom clutter
+function buildEmployeeMaze(rng){
+  for(let x=6;x<GRID_W-16;x+=4){ for(let z=6;z<GRID_D-8;z++){
+    if(nearRooms(x,z))continue;
+    // vertical wall runs with random door gaps
+    if(z%9>1&&rng()<0.86){ grid[gi(x,z)]=G_WALL; } } }
+  for(let z=10;z<GRID_D-12;z+=8){ for(let x=6;x<GRID_W-16;x++){
+    if(nearRooms(x,z))continue;
+    if(x%11>2&&rng()<0.5&&grid[gi(x,z)]===G_WALK)grid[gi(x,z)]=G_WALL; } }
+  buildRoomWallInstances();
+}
+
+// INFINITE CHECKOUT LANES — rows of registers receding into fog
+function buildInfiniteCheckouts(rng){
+  for(let z=10;z<GRID_D-10;z+=6){
+    for(let x=14;x<GRID_W-18;x+=7){
+      if(nearRooms(x,z))continue;
+      grid[gi(x,z)]=G_PROPS; grid[gi(x+1,z)]=G_PROPS;
+      const [wx,wz]=cellToWorld(x,z);
+      if(typeof artCheckout==='function')artCheckout(wx+0.5,wz,1+((x+z*3)%9));
+      const spot={x:wx+0.5,z:wz+1.1,searched:rng()<0.7};
+      registerSpots.push(spot); // every lane is a hiding spot — you'll need them
+    }
+  }
+  buildRoomWallInstances();
 }
 
 function buildRegisters(rng){
@@ -733,16 +834,18 @@ function buildRain(){
 
 // ================================ SECTION 7: ITEMS & LORE ==================
 const ITEMS={
-  bolts:{name:'Hardware Bolts',icon:'🔩'}, powder:{name:'Gunpowder',icon:'🧨'},
-  pipe:{name:'Metal Pipe',icon:'🔧'}, handle:{name:'Wooden Handle',icon:'🪵'},
-  wires:{name:'Common Wires',icon:'🔌'}, battery:{name:'High-Grade Battery',icon:'🔋'},
-  cloth:{name:'Cloth Rags',icon:'🧵'}, shells:{name:'Shotgun Shells',icon:'🟠'},
-  rifleAmmo:{name:'Rifle Rounds',icon:'🟡'}, medkit:{name:'First-Aid Kit',icon:'💊'},
-  molotov:{name:'Molotov',icon:'🍾'}, emp:{name:'EMP Grenade',icon:'💠'},
-  fence:{name:'Electric Fence Kit',icon:'⚡'}, pressure:{name:'Pressure Machine',icon:'🗜️'},
-  shotgun:{name:'Pipe Shotgun',icon:'🔫'}, rifle:{name:'MK-Vault Rifle',icon:'🎯'},
-  nvg:{name:'Night Vision Goggles',icon:'🥽'}, vest:{name:'Bulletproof Vest',icon:'🦺'},
-  boots:{name:'Combat Boots',icon:'🥾'}, converter:{name:'Industrial Converter',icon:'🏭'},
+  bolts:{name:'Hardware Bolts',icon:''}, powder:{name:'Gunpowder',icon:''},
+  pipe:{name:'Metal Pipe',icon:''}, handle:{name:'Wooden Handle',icon:''},
+  wires:{name:'Common Wires',icon:''}, battery:{name:'High-Grade Battery',icon:''},
+  cloth:{name:'Cloth Rags',icon:''}, shells:{name:'Shotgun Shells',icon:''},
+  rifleAmmo:{name:'Rifle Rounds',icon:''}, medkit:{name:'First-Aid Kit',icon:''},
+  molotov:{name:'Molotov',icon:''}, emp:{name:'EMP Grenade',icon:''},
+  fence:{name:'Electric Fence Kit',icon:''}, pressure:{name:'Pressure Machine',icon:''},
+  shotgun:{name:'Pipe Shotgun',icon:''}, rifle:{name:'MK-Vault Rifle',icon:''},
+  nvg:{name:'Night Vision Goggles',icon:''}, vest:{name:'Bulletproof Vest',icon:''},
+  boots:{name:'Combat Boots',icon:''}, converter:{name:'Industrial Converter',icon:''},
+  portgen:{name:'Portable Generator',icon:''}, plate:{name:'Heavy Barricade Plate',icon:''},
+  booster:{name:'Battery Booster Kit',icon:''},
 };
 const RECIPES=[
   {out:'shotgun',n:1,tier:1,cost:{bolts:4,powder:1,pipe:2,handle:1},desc:'Massive close blast. Wild spread. 2 shells, slow reload. LOUD.'},
@@ -756,6 +859,9 @@ const RECIPES=[
   {out:'vest',n:1,tier:2,cost:{cloth:3,bolts:4},desc:'Halves damage taken.'},
   {out:'boots',n:1,tier:2,cost:{cloth:2,bolts:2},desc:'Quieter steps. No puddle slips.'},
   {out:'rifleAmmo',n:8,tier:2,cost:{powder:1,bolts:1},desc:'Military rounds ×8.'},
+  {out:'portgen',n:1,tier:2,cost:{battery:2,wires:4,pipe:1},desc:'Placed on assembly. Keeps fences live through blackouts within 10m — but it hums, and they hear it.'},
+  {out:'plate',n:1,tier:2,cost:{pipe:2,bolts:4},desc:'Applied on assembly: reinforces your nearest welded barricade with +160 durability plating.'},
+  {out:'booster',n:1,tier:2,cost:{battery:1,bolts:2},desc:'Applied on assembly: your nearest electric fence gains battery backup — live even in blackouts.'},
 ];
 const LORE=[
  {t:'CRUMPLED SCHEDULE',b:'Week 340. Same names. Nobody remembers being hired. Nobody remembers the doors. Dana in Produce swears the parking lot is painted on. She stopped clocking out. Then she stopped being Dana.'},
@@ -909,7 +1015,15 @@ class Enemy{
       case 'crawler': this.brainCrawler(dt,d); break;
       case 'child': this.brainChild(dt,d); return; // teleporter: no physics walk
       case 'specter': this.brainSpecter(dt,d); return; // phases: no collision
+      case 'faceless': this.brainFaceless(dt,d); return; // observed = frozen
     }
+    // liminal variant: staring pins them in place (Manager excepted)
+    if(this.freezeWhenSeen&&this.type!=='manager'&&playerCanSee(this.x,this.z)){
+      this.vx=0; this.vz=0; this.mesh.position.set(this.x,0,this.z);
+      if(this.headNode)this.headNode.rotation.z=0.3;   // slow, wrong head tilt
+      this.tryAttackPlayer(dt,d); return;
+    }
+    this.applyFloodReactions(dt,d);
     this.applyMove(dt);
     this.animate(dt);
     this.tryAttackPlayer(dt,d);
@@ -1060,6 +1174,51 @@ class Enemy{
         if(!cellBlocked(cx,cz)&&dist2d(cx-HALF_W,cz-HALF_D,player.x,player.z)>25){ [this.x,this.z]=cellToWorld(cx,cz); break; } }
     }
   }
+  // --- flood reactions (water depth from the flood system) ---
+  applyFloodReactions(dt,d){
+    if(typeof inWater!=='function'||!inWater(this.x,this.z))return;
+    switch(this.type){
+      case 'roller': // motorized cart + standing water = short circuit
+        this.shortCd=(this.shortCd||0)-dt;
+        if(this.shortCd<=0){ this.shortCd=10; this.stun=Math.max(this.stun,5);
+          AudioEngine.zap(); sparkBurst(this.x,this.z); }
+        break;
+      case 'stocker': // blind AND wading — panic thrash, loud, erratic
+        this.vx+=Math.sin(game.time*11+this.animT)*1.6*dt*60*0.05;
+        this.vz+=Math.cos(game.time*13+this.animT)*1.6*dt*60*0.05;
+        if(Math.random()<dt*0.4)emitNoise(this.x,this.z,10,0.3,'splash');
+        break;
+      case 'crawler': // swims — faster in water, glides under shelves
+        this.vx*=1.28; this.vz*=1.28; this.mesh.position.y=-0.15;
+        break;
+      case 'manager': /* walks through water unaffected. of course he does. */ break;
+    }
+  }
+  // --- THE EMPLOYEE THAT SHOULDN'T EXIST ---
+  // No face. No uniform. No name tag. Moves only while unobserved.
+  // Cannot be hurt. Touch = it takes things. Backrooms floors only.
+  brainFaceless(dt,d){
+    const seen=playerCanSee(this.x,this.z);
+    if(!seen){
+      const dx=player.x-this.x,dz=player.z-this.z,l=Math.hypot(dx,dz)||1;
+      this.vx=dx/l*d.speed; this.vz=dz/l*d.speed;
+      this.applyMove(dt);
+    } else { this.vx=0; this.vz=0; this.mesh.position.set(this.x,0,this.z); }
+    this.mesh.rotation.y=Math.atan2(player.x-this.x,player.z-this.z); // always facing you
+    const dst=dist2d(this.x,this.z,player.x,player.z);
+    if(dst<8)addFear(dt*(seen?4:9));
+    if(dst<1.2&&this.atkCd<=0){
+      this.atkCd=8; addFear(40); shakeCam(1.2);
+      AudioEngine.staticBurst(0.6,0.12);
+      const ids=Object.keys(inv.counts).filter(k=>inv.counts[k]>0);
+      for(let n=0;n<2&&ids.length;n++){ const id=ids.splice((Math.random()*ids.length)|0,1)[0];
+        inv.counts[id]=Math.max(0,inv.counts[id]-1); }
+      refreshHotbar();
+      subtitle('Its hands were in your pockets. You never saw it move.','#9aa8b5',4);
+      for(let i=0;i<20;i++){ const cx=(Math.random()*GRID_W)|0,cz=(Math.random()*GRID_D)|0;
+        if(!cellBlocked(cx,cz)&&dist2d(cx-HALF_W,cz-HALF_D,player.x,player.z)>24){ [this.x,this.z]=cellToWorld(cx,cz); break; } }
+    }
+  }
   brainSpecter(dt,d){
     // blackout-only phantom: drifts through everything toward the player
     if(game.power!=='OFF'){ this.despawn(); return; }
@@ -1076,6 +1235,7 @@ class Enemy{
   }
   hurt(dmg,fromFire){
     if(this.dead)return;
+    if(this.type==='faceless')return;           // nothing touches it back
     if(this.type==='specter'&&!fromFire)return; // bullets pass through
     this.hp-=dmg;
     if(this.hostile()){ this.noiseX=player.x; this.noiseZ=player.z; this.noiseMemT=game.time; }
@@ -1094,19 +1254,30 @@ const ENEMY_DEFS={
   crawler:{hp:50, speed:5.6, hearing:1.2, vision:14, dmg:12, barrDmg:10, w:0.8,h:1.1},
   child:  {hp:1e9,speed:0,   hearing:0,   vision:0,  dmg:0,  barrDmg:0,  w:0.4,h:1.1},
   specter:{hp:35, speed:1.7, hearing:0,   vision:0,  dmg:6,  barrDmg:0,  w:0.7,h:2.2},
+  faceless:{hp:1e9,speed:2.3,hearing:0,   vision:0,  dmg:0,  barrDmg:0,  w:0.62,h:2.0},
 };
 
 function spawnPopulation(rng,floorIdx,biome){
   const f=Math.min(floorIdx,8);
-  const spawnAt=(type,n)=>{ for(let i=0;i<n;i++){
+  const liminal=typeof isLiminal==='function'&&isLiminal(biome);
+  const spawnAt=(type,n,mod)=>{ for(let i=0;i<n;i++){
     for(let t=0;t<30;t++){ const cx=(2+rng()*(GRID_W-4))|0, cz=(2+rng()*(GRID_D-4))|0;
       if(!cellBlocked(cx,cz)){ const [wx,wz]=cellToWorld(cx,cz);
-        if(dist2d(wx,wz,player.x||0,player.z||0)>14){ enemies.push(new Enemy(type,wx,wz)); break; } } } } };
-  spawnAt('stocker',3+Math.floor(f*0.8));
-  spawnAt('greeter',biome==='BACKROOMS'?1:2);
-  spawnAt('roller',1+Math.floor(f/2));
-  if(biome==='BACKROOMS'||floorIdx>=3)spawnAt('crawler',2+Math.floor(f/2));
+        if(dist2d(wx,wz,player.x||0,player.z||0)>14){
+          const e=new Enemy(type,wx,wz); if(mod)mod(e); enemies.push(e); break; } } } } };
+  // liminal variant dresser: freeze-when-stared + uncanny body mods
+  const variant=e=>{
+    e.freezeWhenSeen=true;
+    if(e.type==='stocker'&&e.detail){ // stretched-limb stockers
+      e.detail.scale.y=1.25;
+      if(e.detail.userData.armR){ e.detail.userData.armR.scale.y=1.7; e.detail.userData.armL.scale.y=1.7; } }
+  };
+  spawnAt('stocker',3+Math.floor(f*0.8),liminal?variant:null);
+  spawnAt('greeter',biome==='BACKROOMS'?1:2,liminal?variant:null);
+  if(biome!=='EMPLOYEE_MAZE')spawnAt('roller',1+Math.floor(f/2),liminal?variant:null); // carts can't corner the maze
+  if(biome==='BACKROOMS'||biome==='FLOODED'||floorIdx>=3)spawnAt('crawler',2+Math.floor(f/2));
   if(floorIdx>=2&&rng()<0.65)spawnAt('child',1);
+  if(liminal||biome==='BACKROOMS')spawnAt('faceless',1); // it is always somewhere here
 }
 function spawnNightWave(){
   const rng=mulberry32((game.worldSeed^game.floor*77+game.day*13)>>>0);
@@ -1173,6 +1344,9 @@ function updatePlayer(dt){
 
   let speed=player.crouch?CFG.crouchSpeed:player.running?CFG.runSpeed:CFG.walkSpeed;
   if(inv.owned.boots)speed*=1.05;
+  // wading: deeper water = heavier legs (waist-deep is a crawl)
+  const depth=game.floodDepth||0;
+  if(depth>0.08)speed*=clamp(1-depth*0.9,0.35,1);
   const moving=(f!==0||s!==0);
   // puddle physics
   const onPuddle=puddles.some(p=>dist2d(p.x,p.z,player.x,player.z)<p.r);
@@ -1191,8 +1365,10 @@ function updatePlayer(dt){
       let radius=player.crouch?CFG.noiseCrouch:player.running?CFG.noiseRun:CFG.noiseWalk;
       if(inv.owned.boots)radius*=0.75;
       if(onPuddle)radius*=1.5;
+      if(depth>0.08)radius*=1.8;                      // wading is LOUD
       emitNoise(player.x,player.z,radius,player.running?0.5:0.25,'footstep');
-      AudioEngine.footstep(player.running?1:0,player.crouch);
+      AudioEngine.footstep(player.running?1:0,player.crouch&&depth<0.08);
+      if(typeof queueMimicStep==='function')queueMimicStep();
     }
     player.noiseLevel=player.crouch?0.1:player.running?0.8:0.4;
   } else player.noiseLevel=0;
@@ -1245,7 +1421,9 @@ function syncCamera(dt){
   const fearSway=player.fear/100*0.02;
   camShake=Math.max(0,camShake-dt*2);
   const sh=camShake*0.05+fearSway;
-  camera.rotation.set(player.pitch+Math.sin(game.time*17)*sh, player.yaw+Math.sin(game.time*13)*sh, Math.sin(game.time*9)*sh*0.5, 'YXZ');
+  // +PI aligns the camera with the game's yaw convention: forward =
+  // (sin yaw, cos yaw), the same vector aimDir/movement/vision all use.
+  camera.rotation.set(player.pitch+Math.sin(game.time*17)*sh, player.yaw+Math.PI+Math.sin(game.time*13)*sh, Math.sin(game.time*9)*sh*0.5, 'YXZ');
 }
 
 // ---- weapons ----
@@ -1578,6 +1756,7 @@ function artStockShelves(segs){
   body.instanceMatrix.needsUpdate=deck.instanceMatrix.needsUpdate=prod.instanceMatrix.needsUpdate=true;
   if(prod.instanceColor)prod.instanceColor.needsUpdate=true;
   world.add(body); world.add(deck); world.add(prod);
+  floorProdMesh=prod;   // liminal glitch system perturbs these instances
   buildRoomWallInstances();
 }
 
@@ -1642,15 +1821,19 @@ function artCartMesh(){
 function _box(w,h,d,mat,x,y,z){ const m=new THREE.Mesh(geo(new THREE.BoxGeometry(w,h,d)),mat); m.position.set(x,y,z); return m; }
 function artHumanoid(type,def){
   const g=new THREE.Group(); const H=def.h;
-  const uniform=type==='manager'?MAT.suit:MAT.vest;
+  // THE FACELESS: no uniform, no tag, no face, no eyes. Just a person-shape.
+  const faceless=type==='faceless';
+  const uniform=faceless?MAT.pants:type==='manager'?MAT.suit:MAT.vest;
   // legs
   g.add(_box(0.2,H*0.4,0.22,MAT.pants,-0.14,H*0.2,0));
   g.add(_box(0.2,H*0.4,0.22,MAT.pants, 0.14,H*0.2,0));
   // torso
   const torso=_box(def.w*1.05,H*0.34,def.w*0.7,uniform,0,H*0.58,0); g.add(torso);
-  // name tag / badge on chest
-  const tagTex=TextureFactory.label(type==='greeter'?'HELLO\nmy name is':(type==='manager'?'MANAGER':'ASSOCIATE'),{w:128,h:96,bg:'#0a4d9c',fg:'#fff',size:26});
-  const tag=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.22,0.16)),new THREE.MeshBasicMaterial({map:tagTex})); tag.position.set(0.12,H*0.62,def.w*0.36+0.01); g.add(tag);
+  // name tag / badge on chest (the Faceless has never been issued one)
+  if(!faceless){
+    const tagTex=TextureFactory.label(type==='greeter'?'HELLO\nmy name is':(type==='manager'?'MANAGER':'ASSOCIATE'),{w:128,h:96,bg:'#0a4d9c',fg:'#fff',size:26});
+    const tag=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.22,0.16)),new THREE.MeshBasicMaterial({map:tagTex})); tag.position.set(0.12,H*0.62,def.w*0.36+0.01); g.add(tag);
+  }
   if(type==='stocker'){ const apron=_box(def.w*0.9,H*0.3,0.04,MAT.apron,0,H*0.5,def.w*0.36); g.add(apron); }
   // arms
   const armL=_box(0.12,H*0.36,0.14,uniform,-def.w*0.62,H*0.58,0); g.add(armL);
@@ -1659,13 +1842,15 @@ function artHumanoid(type,def){
   // neck + head
   g.add(_box(0.1,0.08,0.1,MAT.skin,0,H*0.79,0));
   const head=_box(0.26,0.28,0.26,MAT.skin,0,H*0.9,0); g.add(head); g.userData.head=head;
-  // face
-  const faceKind=type==='greeter'?'greeter':type==='stocker'?'blind':'normal';
-  const faceTex=TextureFactory.face(faceKind);
-  const face=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.24,0.26)),new THREE.MeshBasicMaterial({map:faceTex,transparent:true})); face.position.set(0,H*0.9,0.135); g.add(face);
-  // glowing eyes (hostility read even in dark) — greeters/manager only strong
-  if(type!=='stocker'){ const em=type==='child'?MAT.childEyes:MAT.eyes;
-    g.add(_box(0.04,0.04,0.02,em,-0.06,H*0.92,0.14)); g.add(_box(0.04,0.04,0.02,em,0.06,H*0.92,0.14)); }
+  // face — the Faceless gets nothing; smooth skin where a face should be
+  if(!faceless){
+    const faceKind=type==='greeter'?'greeter':type==='stocker'?'blind':'normal';
+    const faceTex=TextureFactory.face(faceKind);
+    const face=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.24,0.26)),new THREE.MeshBasicMaterial({map:faceTex,transparent:true})); face.position.set(0,H*0.9,0.135); g.add(face);
+    // glowing eyes (hostility read even in dark)
+    if(type!=='stocker'){ const em=type==='child'?MAT.childEyes:MAT.eyes;
+      g.add(_box(0.04,0.04,0.02,em,-0.06,H*0.92,0.14)); g.add(_box(0.04,0.04,0.02,em,0.06,H*0.92,0.14)); }
+  }
   // type-specific silhouette shaping
   if(type==='manager'){ g.scale.set(1.15,1.0,1.15); head.scale.y=1.4; head.position.y=H*0.92; } // elongated
   if(type==='crawler'){ g.rotation.x=1.15; g.position.y=-0.2; } // low crawl
@@ -1822,6 +2007,242 @@ function artPriceBoards(rng){
     m.position.set(wx+0.5,2.1,wz-1.2); world.add(m);
   }
 }
+
+// ============================================================================
+// BACKROOMS + FLOOD EXPANSION — liminal set dressing, water, uncanny systems
+// ============================================================================
+let waterPlane=null, mannequins=[], portgens=[], floorProdMesh=null, seasonalBlink=null;
+
+// per-floor art state — called from disposeWorld so stale references never
+// survive a floor rebuild (fail-safe against dangling disposed objects)
+function artResetFloorState(){
+  waterPlane=null; mannequins=[]; floatDebris=[]; portgens=[];
+  floorProdMesh=null; seasonalBlink=null;
+  game.baseFloodDepth=0; game.floodDepth=0; game.floodStage=0; game.floodClock=0;
+  if(game.weather==='FLOOD')game.weather='DRIZZLE'; // new floor drains the flood
+  AudioEngine.setBedLevel&&AudioEngine.setBedLevel('breath',0);
+}
+
+// ---------- STORE-WIDE WATER PLANE (flood system surface) ----------
+function artWaterPlane(baseDepth){
+  const mat=new THREE.MeshStandardMaterial({color:0x18313d,roughness:0.04,metalness:0.35,
+    transparent:true,opacity:0.72,envMapIntensity:1.4});
+  disposables.push(mat);
+  waterPlane=new THREE.Mesh(geo(new THREE.PlaneGeometry(GRID_W,GRID_D)),mat);
+  waterPlane.rotation.x=-Math.PI/2; waterPlane.position.y=baseDepth||-1;
+  waterPlane.visible=(baseDepth||0)>0; world.add(waterPlane);
+  game.baseFloodDepth=baseDepth||0;
+  game.floodDepth=game.baseFloodDepth;
+}
+
+// ---------- MANNEQUINS (Seasonal aisle) — turn to face you when unobserved --
+function artMannequin(x,z,rng){
+  const plastic=new THREE.MeshStandardMaterial({color:0xd8d2c4,roughness:0.5});
+  disposables.push(plastic);
+  const g=new THREE.Group();
+  g.add(_box(0.34,0.62,0.22,plastic,0,0.95,0));
+  g.add(_box(0.11,0.5,0.13,plastic,-0.1,0.32,0)); g.add(_box(0.11,0.5,0.13,plastic,0.1,0.32,0));
+  g.add(_box(0.1,0.44,0.12,plastic,-0.24,0.98,0)); g.add(_box(0.1,0.44,0.12,plastic,0.24,0.98,0));
+  const head=new THREE.Mesh(geo(new THREE.SphereGeometry(0.14,10,8)),plastic); head.position.y=1.42; g.add(head);
+  // featureless — no face. that IS the face.
+  g.position.set(x,0,z); g.rotation.y=rng()*Math.PI*2; world.add(g);
+  mannequins.push({g,x,z,turned:false});
+}
+function artMannequinUpdate(){
+  for(const m of mannequins){
+    const seen=playerCanSee(m.x,m.z);
+    if(!seen&&!m.turned){ // while you're not looking, they come around
+      m.g.rotation.y=Math.atan2(player.x-m.x,player.z-m.z); m.turned=true;
+    } else if(seen)m.turned=false;
+  }
+}
+
+// ---------- VENDING MACHINE (Employee Maze) ----------
+function artVending(x,z,rng){
+  const g=new THREE.Group();
+  const bodyMat=new THREE.MeshStandardMaterial({color:rng()<0.5?0xa32633:0x2a4a8c,roughness:0.4,metalness:0.3});
+  disposables.push(bodyMat);
+  g.add(_box(1.1,2.1,0.8,bodyMat,0,1.05,0));
+  const glassTex=TextureFactory.label('SNACKS',{w:128,h:256,bg:'#0c1016',fg:'#4a5560',size:26,grime:true});
+  const glass=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.7,1.5)),new THREE.MeshBasicMaterial({map:glassTex}));
+  glass.position.set(-0.1,1.2,0.41); g.add(glass);
+  const slot=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.24,0.5)),MAT.fixtureOn); slot.position.set(0.36,1.2,0.41); g.add(slot);
+  g.position.set(x,0,z); g.rotation.y=(rng()*4|0)*Math.PI/2; world.add(g);
+  const [cx,cz]=worldToCell(x,z); grid[gi(cx,cz)]=G_PROPS;
+}
+
+// ---------- LIMINAL SET DRESSING per biome ----------
+function artLiminalDress(biome,rng){
+  const spot=(fn,n)=>{ for(let i=0;i<n;i++){ for(let t=0;t<24;t++){
+    const cx=(6+rng()*(GRID_W-12))|0, cz=(6+rng()*(GRID_D-12))|0;
+    if(grid[gi(cx,cz)]===G_WALK&&!nearRooms(cx,cz)){ const [wx,wz]=cellToWorld(cx,cz); fn(wx,wz); break; } } } };
+  if(biome==='SEASONAL'){
+    spot((x,z)=>artMannequin(x,z,rng),9);
+    // Christmas trees in July: dark cones on trunks
+    const needle=new THREE.MeshStandardMaterial({color:0x1d3a24,roughness:0.9}); disposables.push(needle);
+    spot((x,z)=>{ const t=new THREE.Group();
+      for(let l=0;l<3;l++){ const c=new THREE.Mesh(geo(new THREE.ConeGeometry(0.7-l*0.18,0.8,8)),needle); c.position.y=0.7+l*0.55; t.add(c); }
+      const trunk=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.08,0.1,0.5,6)),MAT.crate); trunk.position.y=0.25; t.add(trunk);
+      t.position.set(x,0,z); world.add(t);
+      const [cx,cz]=worldToCell(x,z); grid[gi(cx,cz)]=G_PROPS; },7);
+    // one dead string of holiday lights that still blinks (world-owned,
+    // NOT in the pooled fixture lights — pooling reassigns those every frame)
+    spot((x,z)=>{ const L=new THREE.PointLight(0xcc3333,0.7,7,2); L.position.set(x,2.6,z); world.add(L);
+      seasonalBlink=L; },1);
+  }
+  if(biome==='EMPLOYEE_MAZE'){
+    spot((x,z)=>artVending(x,z,rng),6);
+    // EMPLOYEES ONLY + EXIT signs that lie
+    for(let i=0;i<8;i++){ const cx=(8+rng()*(GRID_W-20))|0, cz=(8+rng()*(GRID_D-16))|0;
+      const [wx,wz]=cellToWorld(cx,cz);
+      const tex=TextureFactory.label(rng()<0.5?'EXIT':'EMPLOYEES ONLY',{w:256,h:80,bg:'#111',fg:rng()<0.7?'#e33':'#cfc',size:38,grime:true});
+      const m=new THREE.Mesh(geo(new THREE.PlaneGeometry(1.6,0.5)),new THREE.MeshBasicMaterial({map:tex,side:THREE.DoubleSide}));
+      m.position.set(wx,CFG.wallH-0.8,wz); m.rotation.y=rng()*6; world.add(m); }
+  }
+  if(biome==='YELLOW_HALL'){
+    // moist carpet patches (dark rough discs) + the hum is handled globally
+    const damp=new THREE.MeshStandardMaterial({color:0x5a5232,roughness:1,transparent:true,opacity:0.5}); disposables.push(damp);
+    spot((x,z)=>{ const m=new THREE.Mesh(geo(new THREE.CircleGeometry(1.4+rng()*1.4,12)),damp);
+      m.rotation.x=-Math.PI/2; m.position.set(x,0.015,z); world.add(m); },12);
+  }
+  if(biome==='FLOODED'){
+    // floating debris — bobbing crates and product boxes on the water line
+    for(let i=0;i<14;i++){ const cx=(6+rng()*(GRID_W-12))|0, cz=(6+rng()*(GRID_D-12))|0;
+      if(grid[gi(cx,cz)]!==G_WALK)continue; const [wx,wz]=cellToWorld(cx,cz);
+      const m=new THREE.Mesh(geo(new THREE.BoxGeometry(0.4+rng()*0.5,0.25,0.4+rng()*0.4)),rng()<0.5?MAT.crate:MAT.shelfGoods);
+      m.position.set(wx,0.16,wz); m.rotation.y=rng()*6; m.userData.float=true; world.add(m);
+      floatDebris.push(m); }
+  }
+  if(biome==='WRONG'){ /* corruption lives in artSignageWrong + product glitching */ }
+}
+let floatDebris=[];
+
+// ---------- CORRUPTED SIGNAGE (Wrong Walmart) ----------
+function artSignageWrong(rng){
+  const sameAisle=1+((rng()*9)|0); // every sign claims the same aisle
+  for(let x=16;x<GRID_W-16;x+=8){
+    const [wx,wz]=cellToWorld(x,20);
+    const garble=rng()<0.3;
+    const txt=garble?'A̲I̵S̶L̴E\n'+String.fromCharCode(0x2588,0x2588):'AISLE\n'+sameAisle;
+    const tex=TextureFactory.label(txt,{w:256,h:256,bg:'#0a4d9c',fg:'#ffffff',border:'#ffd23a',bw:10,size:62,grime:true});
+    const m=new THREE.Mesh(geo(new THREE.PlaneGeometry(2.4,2.4)),new THREE.MeshBasicMaterial({map:tex,transparent:true}));
+    m.position.set(wx+0.5,CFG.wallH-1.1,wz); if(rng()<0.25)m.rotation.z=Math.PI; // some hang upside down
+    world.add(m);
+  }
+  // blank white product labels on shelf ends — items with no names
+  for(let i=0;i<8;i++){ const cx=(14+rng()*(GRID_W-28))|0, cz=(14+rng()*(GRID_D-24))|0; if(cellBlocked(cx,cz))continue;
+    const [wx,wz]=cellToWorld(cx,cz);
+    const tex=TextureFactory.label(' ',{w:200,h:150,bg:'#e8e6df',fg:'#e8e6df',size:38,grime:true});
+    const m=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.7,0.52)),new THREE.MeshBasicMaterial({map:tex}));
+    m.position.set(wx,2.7,wz); m.rotation.y=rng()*6; world.add(m); }
+}
+
+// ---------- FLOOD SYSTEM ----------
+// Stages: 0 dry, 1 puddling, 2 ankle, 3 knee, 4 waist. FLOODED biome floors
+// start at 2. Weather 'FLOOD' escalates over time, drains on weather change.
+const FLOOD_DEPTH=[0,0.06,0.16,0.38,0.62];
+function floodUpdate(dt){
+  const flooding=game.weather==='FLOOD';
+  const target=Math.max(game.baseFloodDepth||0, flooding?FLOOD_DEPTH[game.floodStage|0]:0);
+  game.floodDepth=game.floodDepth||0;
+  game.floodDepth+=(target-game.floodDepth)*dt*0.12; // slow rise/drain
+  if(flooding){
+    game.floodClock=(game.floodClock||0)+dt;
+    if(game.floodClock>26&&game.floodStage<4){ game.floodStage++; game.floodClock=0;
+      subtitle(['','Water is pooling in the aisles…','The water is at your ankles.',
+        'Knee-deep now. The store hums under it.','WAIST-DEEP. Things move under the surface.'][game.floodStage],'#77aaff',4);
+      AudioEngine.thunder(); }
+  } else game.floodStage=Math.min(game.floodStage||0, game.floodDepth>0.1?game.floodStage:0);
+  if(waterPlane){
+    const d=game.floodDepth;
+    waterPlane.visible=d>0.03;
+    waterPlane.position.y=d+Math.sin(game.time*1.7)*0.012; // living surface
+  }
+  // bobbing debris rides the water line
+  for(const m of floatDebris)if(m.userData.float)
+    m.position.y=Math.max(0.14,game.floodDepth+0.06+Math.sin(game.time*1.3+m.position.x)*0.03);
+  // occasional drips + electrical risk messaging handled by hazards
+  if(game.floodDepth>0.05&&Math.random()<dt*0.7)AudioEngine.drip();
+}
+function inWater(x,z){ return (game.floodDepth||0)>0.1; }
+function playerWading(){ return (game.floodDepth||0)>0.1; }
+
+// ---------- LIMINAL RUNTIME (hum depth, living fog, product glitch, mimic) --
+let glitchT=0,whisperT=30,mimicQueue=[],breathT=0;
+function liminalUpdate(dt){
+  // lights hum louder the deeper you go
+  AudioEngine.humLevel(0.018+Math.min(game.floor*0.004,0.03)+(game.liminal?0.02:0));
+  // the Faceless breathes — you hear it before you ever see it
+  breathT-=dt;
+  if(breathT<=0){ breathT=0.25;
+    let nearest=99;
+    for(const e of enemies)if(!e.dead&&e.type==='faceless')
+      nearest=Math.min(nearest,dist2d(e.x,e.z,player.x,player.z));
+    AudioEngine.breath(clamp(1-nearest/18,0,1));
+  }
+  // fog breathes
+  if(scene.fog&&game.liminal)scene.fog.density*=1+Math.sin(game.time*0.5)*0.004;
+  // dead holiday lights blink out of season
+  if(seasonalBlink)seasonalBlink.intensity=Math.sin(game.time*2.3)>0.7?0.7:0.05;
+  if(!game.liminal)return;
+  artMannequinUpdate();
+  // products glitch: a shelf item near the player snaps its scale for a frame
+  glitchT-=dt;
+  if(glitchT<=0&&floorProdMesh){
+    glitchT=3+Math.random()*7;
+    const i=(Math.random()*floorProdMesh.count)|0;
+    const m=new THREE.Matrix4(); floorProdMesh.getMatrixAt(i,m);
+    const s=new THREE.Matrix4().makeScale(1,0.05+Math.random()*2.4,1);
+    floorProdMesh.setMatrixAt(i,m.clone().multiply(s));
+    floorProdMesh.instanceMatrix.needsUpdate=true;
+    setTimeout(()=>{ if(floorProdMesh){ floorProdMesh.setMatrixAt(i,m); floorProdMesh.instanceMatrix.needsUpdate=true; } },120+Math.random()*300);
+  }
+  // backwards intercom whispers
+  whisperT-=dt;
+  if(whisperT<=0){ whisperT=35+Math.random()*50;
+    intercomWhisper(randPick(Math.random,[
+      'the store is now open welcome valued customers',
+      'please make your way to the exits immediately',
+      'price check on aisle you','clean up on aisle you','we see you shopping with us today'])); }
+  // footstep mimicry: something repeats your steps, slightly late, slightly wrong
+  for(let i=mimicQueue.length-1;i>=0;i--){ mimicQueue[i]-=dt;
+    if(mimicQueue[i]<=0){ mimicQueue.splice(i,1); AudioEngine.footstep(0,Math.random()<0.5); } }
+}
+function queueMimicStep(){
+  if(!game.liminal)return;
+  const near=enemies.some(e=>!e.dead&&dist2d(e.x,e.z,player.x,player.z)<14&&!playerCanSee(e.x,e.z));
+  if(near&&Math.random()<0.5)mimicQueue.push(0.32+Math.random()*0.2);
+}
+
+// ---------- CRAFT FEEDBACK: clank + sparks + progress ----------
+function artCraftFX(){
+  AudioEngine.clank(); AudioEngine.weld();
+  sparkBurst(player.x+Math.sin(player.yaw)*1.2,player.z+Math.cos(player.yaw)*1.2);
+}
+
+// ---------- PORTABLE GENERATOR (placed on craft) ----------
+function artPlacePortgen(){
+  const [dx,dz]=aimDir(); const x=player.x+dx*1.6, z=player.z+dz*1.6;
+  const g=new THREE.Group();
+  g.add(_box(0.8,0.6,0.5,MAT.genr,0,0.3,0));
+  const lamp=new THREE.Mesh(geo(new THREE.SphereGeometry(0.06,8,6)),MAT.fixtureOn); lamp.position.set(0,0.72,0); g.add(lamp);
+  const L=new THREE.PointLight(0xffd9a0,0.9,9,2); L.position.set(0,1,0); g.add(L);
+  g.position.set(x,0,z); world.add(g);
+  portgens.push({x,z,g,light:L});
+  subtitle('Portable generator running — nearby fences stay live through blackouts. It is not quiet.','#ffd76a',4);
+}
+function portgenUpdate(dt){
+  for(const p of portgens){
+    if(Math.random()<dt*0.5)emitNoise(p.x,p.z,14,0.25,'generatorHum');
+    p.light.intensity=0.8+Math.random()*0.25;
+  }
+}
+function nearPortgen(x,z){ return portgens.some(p=>dist2d(p.x,p.z,x,z)<10); }
+
+// icons for the new industrial craftables
+ICONS.portgen='<rect x="4" y="10" width="14" height="9" rx="1" fill="currentColor"/><circle cx="16" cy="8" r="3" stroke="currentColor" stroke-width="2" fill="none"/><rect x="6" y="12" width="4" height="3" fill="#0a0c10"/>';
+ICONS.plate='<rect x="5" y="4" width="14" height="16" rx="1" fill="currentColor"/><circle cx="8" cy="7" r="1.2" fill="#0a0c10"/><circle cx="16" cy="7" r="1.2" fill="#0a0c10"/><circle cx="8" cy="17" r="1.2" fill="#0a0c10"/><circle cx="16" cy="17" r="1.2" fill="#0a0c10"/>';
+ICONS.booster='<rect x="4" y="9" width="10" height="7" rx="1" fill="currentColor"/><path d="M16 8l4 4-4 4" stroke="currentColor" stroke-width="2" fill="none"/><path d="M8 10l-1 3h2l-1 2" stroke="#0a0c10" stroke-width="1.4" fill="none"/>';
 
 // ================================ SECTION 11: INTERACTION ENGINE ===========
 function findInteractTarget(){
@@ -2002,20 +2423,23 @@ function breachArmory(rng){
 }
 
 // ================================ SECTION 14: WEATHER =======================
-const WEATHERS=['CLEAR','DRIZZLE','STORM','FOGBANK'];
+const WEATHERS=['CLEAR','DRIZZLE','STORM','FOGBANK','FLOOD'];
 function updateWeather(dt){
   game.weatherClock-=dt;
   if(game.weatherClock<=0){
     const prev=game.weather;
-    game.weather=randPick(Math.random,WEATHERS.concat(['CLEAR','CLEAR'])); // clear-biased
+    game.weather=randPick(Math.random,WEATHERS.concat(['CLEAR','CLEAR','DRIZZLE'])); // clear-biased
     game.weatherClock=45+Math.random()*80;
+    if(game.weather==='FLOOD')game.weatherClock=110+Math.random()*60; // floods run long
     if(game.weather!==prev){
       updateLightingMood();
       if(game.weather==='STORM')subtitle('Rain hammers a ceiling that shouldn\'t exist.','#77aaff',4);
       if(game.weather==='FOGBANK')subtitle('Fog rolls out from between the aisles.','#aabbcc',4);
+      if(game.weather==='FLOOD'){ game.floodStage=1; game.floodClock=0;
+        intercom('Facilities to receiving. We have water. We have a lot of water.','creepy'); }
     }
   }
-  const raining=game.weather==='DRIZZLE'||game.weather==='STORM';
+  const raining=game.weather==='DRIZZLE'||game.weather==='STORM'||game.weather==='FLOOD';
   AudioEngine.rain(raining?(game.weather==='STORM'?1:0.4):0);
   // rain particles at leaks
   if(rainSys){
@@ -2072,8 +2496,10 @@ function updateLightingMood(initial){
   if(game.weather==='STORM')amb*=0.8;
   ambientLight.intensity=amb;
   hemiLight.intensity=amb*0.6;
-  const fogD= game.weather==='FOGBANK'?0.075: game.weather==='STORM'?0.05: (game.shift==='NIGHT'?0.038:0.02);
+  let fogD= game.weather==='FOGBANK'?0.075: game.weather==='STORM'?0.05: (game.shift==='NIGHT'?0.038:0.02);
+  if(game.biome==='SEASONAL'||game.biome==='FLOODED')fogD=Math.max(fogD,0.055); // creeping fog zones
   scene.fog.density=player.nvg?fogD*0.5:fogD;
+  scene.fog.color.setHex(game.fogColorHex||0x000000);
   scene.background=new THREE.Color(game.power==='OFF'?0x000000:game.shift==='MORNING'?0x14161a:0x050507);
   // fixture states
   fixtures.forEach(f=>{
@@ -2179,10 +2605,19 @@ function updateHazards(dt){
     if(dist2d(player.x,player.z,F.x,F.z)<F.r*0.7)damagePlayer(12*dt,'fire');
     if(F.life<=0){ world.remove(F.g); fires.splice(i,1); if(!fires.length)AudioEngine.fire(false); }
   }
+  const wading=(game.floodDepth||0)>0.1;
   for(const T of traps){
-    T.cd-=dt; if(T.charges<=0||game.power==='OFF'&&!T.boosted)continue;
-    for(const e of enemies){ if(e.dead||e.type==='specter')continue;
-      if(dist2d(e.x,e.z,T.x,T.z)<1.3&&T.cd<=0){
+    T.cd-=dt;
+    const live=T.charges>0&&(game.power==='ON'||T.boosted||(typeof nearPortgen==='function'&&nearPortgen(T.x,T.z)));
+    if(!live)continue;
+    // standing water conducts: bigger kill radius, and it does not care
+    // whose legs are in the water — including yours
+    const zapR=wading?2.6:1.3;
+    if(wading&&dist2d(player.x,player.z,T.x,T.z)<zapR+0.6){
+      damagePlayer(8*dt,'fence'); if(Math.random()<dt*2)AudioEngine.zap();
+    }
+    for(const e of enemies){ if(e.dead||e.type==='specter'||e.type==='faceless')continue;
+      if(dist2d(e.x,e.z,T.x,T.z)<zapR&&T.cd<=0){
         T.cd=1.2; T.charges--; e.stun=4.5; e.hurt(12); AudioEngine.zap(); sparkBurst(T.x,T.z);
         if(T.charges<=0){ T.mesh.children.forEach(c=>c.material=MAT.fixtureOff); } } }
   }
@@ -2260,7 +2695,9 @@ function updateHUD(dt){
   el('fearBar').style.width=(player.fear/CFG.fearMax*100)+'%';
   el('dmg').style.opacity=player.dmgFlash*0.5;
   el('fearVig').style.opacity=player.fear/100*0.65;
-  el('dayLabel').textContent='DAY '+game.day+' · '+game.weather+(player.hidden?' · HIDDEN':'');
+  const wLabel=game.weather==='FLOOD'?'FLOOD '+'▮'.repeat(game.floodStage||1):game.weather;
+  el('dayLabel').textContent='DAY '+game.day+' · '+wLabel+(player.hidden?' · HIDDEN':'')
+    +((game.floodDepth||0)>0.1?' · WADING':'');
   // heartbeat with fear
   heartT-=dt;
   if(player.fear>45&&heartT<=0){ heartT=lerp(1.1,0.42,(player.fear-45)/55); AudioEngine.heartbeat((player.fear-40)/60); }
@@ -2279,12 +2716,47 @@ function openCraft(){
     li.className='recipe'+(ok?'':' locked');
     const cost=Object.entries(r.cost).map(([k,v])=>`${svgIcon(k,15)}${v}`).join(' ');
     li.innerHTML=`<b>${svgIcon(r.out,17)} ${ITEMS[r.out].name}${r.n>1?' ×'+r.n:''}</b><i>${cost}</i><p>${r.desc}</p>`;
-    if(ok)li.onclick=()=>{ craft(r); openCraft(); };
+    if(ok)li.onclick=()=>startCraft(r,li);
     list.appendChild(li);
   });
 }
+// Assembly takes real time: clank + sparks, progress readout, then the item.
+let _crafting=false;
+function startCraft(r,li){
+  if(_crafting)return;
+  _crafting=true;
+  li.style.borderColor='#ffd76a';
+  const p=document.createElement('p'); p.textContent='ASSEMBLING…'; p.style.color='#ffd76a'; li.appendChild(p);
+  if(typeof artCraftFX==='function')artCraftFX(); else AudioEngine.click(600,0.2);
+  setTimeout(()=>{ p.textContent='ASSEMBLING… ▮▮▮'; AudioEngine.clank&&AudioEngine.clank(); },400);
+  setTimeout(()=>{ _crafting=false; craft(r); openCraft(); },1100);
+}
+function nearestWeldedBarricade(range){
+  let best=null,bd=range;
+  for(const b of barricades)if(b.welded){ const d=dist2d(b.x,b.z,player.x,player.z); if(d<bd){bd=d;best=b;} }
+  return best;
+}
+function nearestTrap(range){
+  let best=null,bd=range;
+  for(const T of traps){ const d=dist2d(T.x,T.z,player.x,player.z); if(d<bd){bd=d;best=T;} }
+  return best;
+}
 function craft(r){
+  // target-validated specials: refuse (nothing consumed) if no valid target
+  if(r.out==='plate'&&!nearestWeldedBarricade(10)){ subtitle('No welded barricade within reach to reinforce.','#ffaa66',3); return; }
+  if(r.out==='booster'&&!nearestTrap(10)){ subtitle('No placed fence within reach to boost.','#ffaa66',3); return; }
   if(!consumeItems(r.cost))return;                        // fail-safe: atomic
+  if(r.out==='portgen'){ artPlacePortgen(); return; }
+  if(r.out==='plate'){
+    const b=nearestWeldedBarricade(10);
+    b.max+=160; b.hp+=160; b.mesh.scale.multiplyScalar(1.12); b.mesh.material=MAT.vault;
+    sparkBurst(b.x,b.z); subtitle('Barricade plated: +160 durability.','#ffd76a',3); return;
+  }
+  if(r.out==='booster'){
+    const T=nearestTrap(10);
+    T.boosted=true; T.charges+=3; T.mesh.children.forEach(c=>c.material=MAT.fence);
+    subtitle('Fence boosted: battery backup installed — live through blackouts.','#66eaff',3); return;
+  }
   if(r.out==='converter'){
     game.craftTier=2; game.converterPlaced=true;
     const [dx,dz]=aimDir(); const x=player.x+dx*2,z=player.z+dz*2;
@@ -2353,7 +2825,8 @@ function restart(){
   el('deathOverlay').style.display='none';
   Object.assign(game,{state:'play',floor:1,day:1,shift:'MORNING',shiftClock:0,announced:false,
     power:'ON',blackoutIn:CFG.blackoutMin+Math.random()*60,vaultState:{},weather:'CLEAR',weatherClock:30,
-    kills:0,craftTier:1,converterPlaced:false,paused:false,notesFound:[]});
+    kills:0,craftTier:1,converterPlaced:false,paused:false,notesFound:[],
+    floodStage:0,floodClock:0,floodDepth:0,baseFloodDepth:0,liminal:false});
   Object.assign(player,{hp:CFG.hpMax,stamina:CFG.staminaMax,fear:0,slot:0,shotgunLoaded:2,rifleLoaded:0,
     flashlight:false,nvg:false,carrying:null,x:0,z:0,slipping:0});
   inv.counts={}; inv.owned={crowbar:true};
@@ -2385,6 +2858,9 @@ function tick(now){
     enemies=enemies.filter(e=>!e.dead);
     updateShift(dt); updatePower(dt); updateWeather(dt);
     updateEvents(dt); updateHazards(dt);
+    if(typeof floodUpdate==='function')floodUpdate(dt);
+    if(typeof liminalUpdate==='function')liminalUpdate(dt);
+    if(typeof portgenUpdate==='function')portgenUpdate(dt);
   }
   updateLights(dt);
   updateHUD(dt);
