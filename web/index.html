@@ -68,15 +68,39 @@
     pointer-events:none;z-index:40;background:rgba(2,3,5,0.55);}
   #levelCard .lc{background:#0b0e12;border:1px solid #2c3540;border-left:6px solid #e8a04a;
     border-radius:8px;padding:26px 40px;max-width:560px;text-align:left;box-shadow:0 0 80px rgba(0,0,0,0.95);}
-  #levelCard.danger .lc{border-left-color:#e04a4a;animation:cardPulse 1.2s infinite;}
-  @keyframes cardPulse{0%,100%{box-shadow:0 0 60px rgba(0,0,0,0.9);}50%{box-shadow:0 0 60px rgba(220,50,50,0.35);}}
-  @media (prefers-reduced-motion: reduce){#levelCard.danger .lc{animation:none;}}
+  #levelCard .lc{position:relative;animation:cardIn 0.5s cubic-bezier(.2,.8,.2,1);}
+  @keyframes cardIn{from{opacity:0;transform:translateY(18px) scale(0.97);}to{opacity:1;transform:none;}}
+  #levelCard.danger .lc{border-left-color:#e04a4a;}
+  #levelCard.danger .lc::after{content:"";position:absolute;inset:-1px;border-radius:8px;pointer-events:none;
+    animation:cardPulse 1.2s infinite;}
+  @keyframes cardPulse{0%,100%{box-shadow:0 0 40px rgba(0,0,0,0);}50%{box-shadow:0 0 50px rgba(220,50,50,0.4);}}
+  @media (prefers-reduced-motion: reduce){#levelCard .lc{animation:none;}#levelCard.danger .lc::after{animation:none;}}
+  #lcClose{position:absolute;top:10px;right:14px;width:26px;height:26px;border:1px solid #3a4650;border-radius:5px;
+    background:transparent;color:#8fa3b8;font-size:16px;cursor:pointer;pointer-events:auto;line-height:1;}
+  #lcClose:hover{border-color:#ffd76a;color:#ffd76a;}
   #lcLevel{font-size:0.8em;letter-spacing:0.35em;color:#8fa3b8;}
-  #lcName{font-size:1.7em;letter-spacing:0.12em;color:#ffe9b0;margin:4px 0;}
-  #lcClass{font-size:0.9em;letter-spacing:0.25em;font-weight:bold;}
-  #lcIntro{color:#9db0c0;font-size:0.92em;margin-top:10px;line-height:1.5;}
+  #lcName{font-size:1.7em;letter-spacing:0.12em;color:#ffe9b0;margin:4px 0;padding-right:30px;}
+  #lcClass{display:inline-block;font-size:0.75em;letter-spacing:0.22em;font-weight:bold;
+    border:1px solid currentColor;border-radius:4px;padding:3px 10px;margin-top:2px;}
+  #lcIntro{color:#9db0c0;font-size:0.92em;margin-top:12px;line-height:1.5;}
   #lcWarn{display:none;color:#e04a4a;font-size:0.75em;letter-spacing:0.2em;margin-top:12px;
     border-top:1px solid #442222;padding-top:8px;}
+  /* elevator menu */
+  #elevMenu .panel{min-width:560px;max-width:660px;}
+  #elevGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0;
+    max-height:52vh;overflow-y:auto;}
+  .ebtn{background:#101720;border:1px solid #2c3a48;border-radius:7px;padding:10px 12px;cursor:pointer;
+    display:flex;flex-direction:column;gap:2px;transition:border-color .15s,background .15s;}
+  .ebtn:hover{border-color:#ffd76a;background:#16202b;}
+  .ebtn.locked{opacity:0.4;cursor:not-allowed;filter:grayscale(0.7);}
+  .ebtn.locked:hover{border-color:#2c3a48;background:#101720;}
+  .ebtn.descend{border-color:#4a6a3a;background:#101c12;}
+  .ebtn.apo{border-color:#5a2a3a;}
+  .ebtn.apo:not(.locked){border-color:#ff3a6a;box-shadow:0 0 14px rgba(255,58,106,0.3);}
+  .ebLv{font-size:1.15em;font-weight:bold;color:#ffe9b0;letter-spacing:0.06em;font-variant-numeric:tabular-nums;}
+  .ebName{font-size:0.72em;color:#cfe0ee;letter-spacing:0.04em;}
+  .ebClass{font-size:0.62em;letter-spacing:0.18em;font-weight:bold;}
+  .elevActions{display:flex;gap:10px;justify-content:center;}
   ::-webkit-scrollbar{width:8px;} ::-webkit-scrollbar-thumb{background:#2c3540;border-radius:4px;}
 </style>
 
@@ -117,6 +141,7 @@
       <div><b>G</b> grab crate · <b>R</b> rotate · <b>R-CLICK</b> weld</div>
       <div><b>B</b> crafting · <b>J</b> journal · <b>N</b> night vision</div>
       <div><b>Q</b> use medkit · <b>V</b> drink coffee</div>
+      <div><b>M</b> elevator menu (choose floor)</div>
       <div><b>1–6</b> equipment · <b>H</b> help · <b>ESC</b> pause</div>
     </div>
     <center><button class="btn" id="startBtn">CLOCK IN</button></center>
@@ -127,7 +152,8 @@
 <div id="pauseOverlay" class="overlay">
   <div class="panel"><h2>PAUSED</h2>
   <p style="color:#9db0c0">The store waits. It's good at waiting.</p>
-  <center><button class="btn" id="resumeBtn">RESUME</button></center></div>
+  <center><button class="btn" id="resumeBtn">RESUME</button>
+  <button class="btn" id="pauseFind">FIND ELEVATOR</button></center></div>
 </div>
 
 <div id="craftOverlay" class="overlay">
@@ -166,12 +192,25 @@
 </div>
 
 <div id="levelCard"><div class="lc">
+  <button id="lcClose" title="Dismiss">✕</button>
   <div id="lcLevel">LEVEL 001</div>
   <div id="lcName">THE STORE</div>
-  <div id="lcClass">CLASS: EUCLID</div>
+  <div id="lcClass">EUCLID</div>
   <div id="lcIntro"></div>
   <div id="lcWarn">! CONTAINMENT ADVISORY — HOSTILE ENTITIES CONFIRMED ON THIS LEVEL !</div>
 </div></div>
+
+<div id="elevMenu" class="overlay">
+  <div class="panel">
+    <h2>⛬ FREIGHT ELEVATOR</h2>
+    <p style="color:#9db0c0;font-size:0.85em;margin-top:0">Select a destination. Undiscovered floors are sealed until you reach them by descent. APO-∞ requires the Reality Key.</p>
+    <div id="elevGrid"></div>
+    <div class="elevActions">
+      <button class="btn" id="elevFind">FIND ELEVATOR</button>
+      <button class="btn" id="elevClose">CLOSE [M]</button>
+    </div>
+  </div>
+</div>
 
 <div id="winOverlay" class="overlay">
   <h1>CLOCKED OUT</h1>
@@ -391,7 +430,7 @@ const Input={
     addEventListener('wheel',e=>{ if(this.locked) cycleSlot(e.deltaY>0?1:-1); });
     document.addEventListener('pointerlockchange',()=>{
       this.locked=document.pointerLockElement===canvas;
-      if(!this.locked&&game.state==='play') setPaused(true);   // fail-safe: unlock = pause
+      if(!this.locked&&game.state==='play'&&!game.paused&&!(typeof anyOverlayOpen==='function'&&anyOverlayOpen())) setPaused(true);   // fail-safe: unlock = pause (unless an overlay took the cursor)
     });
   },
   consumeMouse(){ const r=[this.mouseDX,this.mouseDY]; this.mouseDX=0; this.mouseDY=0; return r; },
@@ -517,13 +556,24 @@ const LEVEL_META={
   LV12245:{lv:'12245',  name:'INFINITE WAREHOUSE',clazz:'ARCHON-SAFE',minFloor:2,w:3,intro:'Pallets to the horizon. The operators only work. They will only ever work — unless you interrupt them.',loot:['wires','pressure','battery']},
   LV2000: {lv:'2000',   name:'WATER OFFICES',clazz:'EUCLID',minFloor:3,w:2,intro:'The cubicles flooded long ago. The workers adapted. You have not.',loot:['battery','medkit']},
   LV404:  {lv:'404',    name:'MISSING DEPARTMENT',clazz:'EUCLID',minFloor:5,w:2,intro:'This floor was never found. Its employee was never hired. It already knows your pockets.',loot:['wires','powder']},
+  LV011:  {lv:'011',    name:'FROZEN PRODUCE',clazz:'SAFE',minFloor:2,w:2,intro:'The freezers won. Frost fog rolls between the aisles. The workers here do not feel the cold, and no longer feel you.',loot:['medkit','coffee','cloth']},
+  LV045:  {lv:'045',    name:'BACKROOM BOILER',clazz:'EUCLID',minFloor:3,w:2,intro:'Industrial pipes sweat and hiss. Steam scalds. Something crawls between the boilers where the light cannot reach.',loot:['pipe','bolts','wires']},
+  LV090:  {lv:'090',    name:'NEON ISLES',clazz:'SAFE',minFloor:2,w:2,intro:'The products glow. The shelves hum in colors that do not exist in daylight. It is beautiful. It is wrong. It will not hurt you.',loot:['battery','wires','proto']},
+  LV222:  {lv:'222',    name:'WRONG CHECKOUT',clazz:'EUCLID',minFloor:3,w:2,intro:'Lanes without end. The registers ring up items you never held. Walk forward long enough and you arrive where you began.',loot:['shells','bolts','mapfrag']},
+  LV333:  {lv:'333',    name:'EMPLOYEE ECHO',clazz:'EUCLID → KETER',minFloor:4,w:2,intro:'Your footsteps come back a half-second late. They are not your footsteps. Do not turn to check.',loot:['cloth','powder','battery']},
+  LV515:  {lv:'515',    name:'FLOODED STORAGE',clazz:'EUCLID',minFloor:3,w:2,intro:'Knee-deep and cold. Debris drifts past. The stock crew adapted to the water long ago. You are only visiting.',loot:['battery','medkit','wires']},
+  LV808:  {lv:'808',    name:'MANNEQUIN FACTORY',clazz:'KETER',minFloor:5,w:2,intro:'The assembly line still runs. It still makes them. They come off the belt already knowing how to stand very, very still.',loot:['plate','bolts','cloth']},
+  LV999:  {lv:'999',    name:'GOLDEN BREAKROOM',clazz:'SAFE',minFloor:3,w:1,intro:'Warm gold light. A full first-aid cabinet. Coffee that never cools. Sit. Heal. You have earned a moment.',loot:['medkit','coffee','medkit']},
+  LVAPO0: {lv:'APO-0',  name:'DAWN GATE',clazz:'ARCHON-SAFE',minFloor:6,w:1,intro:'A threshold before the threshold. Golden fog, and the echoes of the Guardian rehearsing a judgment yet to come. The air does not burn here. Not yet.',loot:['medkit','coffee']},
   LV777:  {lv:'777',    name:'LUCKY BREAKROOM',clazz:'SAFE',minFloor:2,w:1,intro:'Warm light. Fresh coffee. Nothing hunts here. Rest.',loot:['coffee','medkit','cloth']},
   LVAPO:  {lv:'APO-∞',  name:'THE EVERSCORCH EXPANSE',clazz:'APOLLYON',intro:'An endless desert under a molten sky. The air itself burns matter. The Sorrow Sun wanders. The Guardian of Eterness watches the Gate of Escape. Approach kneeling. Approach empty-handed.',loot:['medkit']},
 };
 const NAMED_LEVELS=Object.keys(LEVEL_META).filter(k=>k.startsWith('LV'));
 
 function biomeFor(floorIdx,rng){
-  if(floorIdx===1)return 'RETAIL';
+  if(floorIdx===1&&!game.forcedBiome)return 'RETAIL';
+  // manual floor selection from the elevator menu wins outright
+  if(game.forcedBiome){ const b=game.forcedBiome; return b; }
   // holding the wrong-floor keycard reroutes the elevator. Once.
   if((inv.counts.wrongcard||0)>0&&!game.apoVisited)return 'LVAPO';
   if(rng()<0.10)return 'ARMORY';
@@ -542,7 +592,7 @@ function previewBiome(floorIdx){
   const seed=(game.worldSeed*486187739+floorIdx*1000003)>>>0;
   return biomeFor(floorIdx,mulberry32(seed));
 }
-const isLiminal=b=>LIMINAL_BIOMES.includes(b)||['LV234','LV404','LV666'].includes(b);
+const isLiminal=b=>LIMINAL_BIOMES.includes(b)||['LV234','LV404','LV666','LV222','LV333','LV808'].includes(b);
 
 // Per-biome palette applied to the SHARED materials — only one floor exists
 // at a time, so tinting in place is safe and free.
@@ -567,6 +617,15 @@ function applyBiomeTint(biome){
     LV2000:      {wall:0x4a6da8,floor:0x8a948e,ceil:0xcfd4da,fog:0x010408},
     LV404:       {wall:0x9aa1a8,floor:0xc4c1b8,ceil:0xffffff,fog:0x000000},
     LV777:       {wall:0xb08a5a,floor:0x9a7a52,ceil:0xe8d8b8,fog:0x140e04},
+    LV011:       {wall:0xaec4d0,floor:0xd0dce2,ceil:0xeef4f8,fog:0x0a1418},
+    LV045:       {wall:0x5a5048,floor:0x60564a,ceil:0x40382e,fog:0x0a0806},
+    LV090:       {wall:0x2a1e3a,floor:0x1e1830,ceil:0x120c22,fog:0x0a0418},
+    LV222:       {wall:0x8a9199,floor:0xbdbab1,ceil:0xffffff,fog:0x000000},
+    LV333:       {wall:0x66625e,floor:0x7a746c,ceil:0x565048,fog:0x050505},
+    LV515:       {wall:0x5a6a70,floor:0x8a948e,ceil:0x9aa39b,fog:0x020608},
+    LV808:       {wall:0x6a5a52,floor:0x8a7c72,ceil:0xb0a090,fog:0x0a0604},
+    LV999:       {wall:0xc8a860,floor:0xb08a48,ceil:0xf4e4b8,fog:0x1a1204},
+    LVAPO0:      {wall:0xc0a870,floor:0xd8c088,ceil:0xf0d8a0,fog:0x2a2410},
     LVAPO:       {wall:0x7a4a30,floor:0xc49a58,ceil:0x501505,fog:0x2a0e04},
   }[biome]||{wall:0x8a9199,floor:0xb0ada4,ceil:0xffffff,fog:0x000000};
   MAT.wall.color.setHex(t.wall);
@@ -583,14 +642,16 @@ function buildFloor(floorIdx){
   const seed=(game.worldSeed*486187739+floorIdx*1000003)>>>0;
   const rng=mulberry32(seed);
   const biome=biomeFor(floorIdx,rng);
+  game.forcedBiome=null;                              // consumed on build
   game.biome=biome; game.liminal=isLiminal(biome);
+  game.discovered=game.discovered||{}; game.discovered[biome]=true;
   game.lootBias=(LEVEL_META[biome]&&LEVEL_META[biome].loot)||null;
   if(biome==='LVAPO'){ // the wrong-floor keycard is spent bringing you here
     inv.counts.wrongcard=Math.max(0,(inv.counts.wrongcard||0)-1);
     game.apoVisited=true; refreshHotbar&&refreshHotbar();
   }
   applyBiomeTint(biome);
-  const dark=['BACKROOMS','FLOODED','YELLOW_HALL','LV020','LV666'].includes(biome);
+  const dark=['BACKROOMS','FLOODED','YELLOW_HALL','LV020','LV666','LV045','LV090','LV333','LV515','LV808'].includes(biome);
 
   // ---- floor & ceiling ----
   const floorMat=dark?MAT.floorBack:MAT.floor;
@@ -627,13 +688,19 @@ function buildFloor(floorIdx){
     case 'CHECKOUTS':   buildInfiniteCheckouts(rng); break;
     case 'LV000': case 'LV100': case 'LV2000': buildOffices(rng,biome); break;
     case 'LV020':  buildMetro(rng); break;
-    case 'LV777':  buildBreakroom(rng); break;
-    case 'LVAPO':  buildEverscorch(rng); break;
-    case 'LV234': case 'LV404': default: buildRetailAisles(rng,biome); break;
+    case 'LV777': case 'LV999': buildBreakroom(rng); break;
+    case 'LVAPO': case 'LVAPO0': buildEverscorch(rng); break;
+    case 'LV515': buildBackrooms(rng); break;
+    case 'LV222':  buildInfiniteCheckouts(rng); break;
+    case 'LV045':  buildBackrooms(rng); break;
+    case 'LV011': buildRetailAisles(rng,biome,{len:8,lenVar:4,gap:3,gapVar:2}); break;
+    case 'LV090': buildRetailAisles(rng,biome,{len:6,lenVar:4,gap:4,gapVar:2}); break;
+    case 'LV808': buildRetailAisles(rng,biome,{len:10,lenVar:2,gap:3,gapVar:1}); break;
+    case 'LV333': case 'LV234': case 'LV404': default: buildRetailAisles(rng,biome); break;
   }
 
   // ---- registers (front) — hiding + search spots ----
-  if(['RETAIL','ARMORY','COLD','WRONG','SEASONAL','YELLOW_HALL','LV234','LV404'].includes(biome))buildRegisters(rng);
+  if(['RETAIL','ARMORY','COLD','WRONG','SEASONAL','YELLOW_HALL','LV234','LV404','LV011','LV090','LV808','LV333'].includes(biome))buildRegisters(rng);
 
   // ---- liminal set dressing ----
   if(typeof artLiminalDress==='function')artLiminalDress(biome,rng);
@@ -664,7 +731,7 @@ function buildFloor(floorIdx){
   }
   if(typeof artCeilingDetail==='function')artCeilingDetail(rng);
   if(typeof artDust==='function')artDust();
-  if(typeof artWaterPlane==='function')artWaterPlane(biome==='FLOODED'?0.16:biome==='LV2000'?0.3:0);
+  if(typeof artWaterPlane==='function')artWaterPlane(biome==='FLOODED'?0.16:biome==='LV2000'?0.3:biome==='LV515'?0.28:0);
 
   // ---- populate employees ----
   spawnPopulation(rng,floorIdx,biome);
@@ -705,18 +772,21 @@ function buildElevatorRoom(rng){
   const door=[[x0, z0+4],[x0,z0+5]];
   carveRoom(x0,z0,w,d,door);
   const [cx,cz]=cellToWorld(x0+4,z0+4);
-  // cabin
-  const cab=new THREE.Group();
-  const back=new THREE.Mesh(geo(new THREE.BoxGeometry(4,4,0.3)),MAT.cabin); back.position.set(0,2,-1.8); cab.add(back);
-  [-2,2].forEach(sx=>{ const side=new THREE.Mesh(geo(new THREE.BoxGeometry(0.3,4,4)),MAT.cabin); side.position.set(sx,2,0); cab.add(side); });
-  const top=new THREE.Mesh(geo(new THREE.BoxGeometry(4,0.3,4)),MAT.cabin); top.position.set(0,4,0); cab.add(top);
-  const doors=new THREE.Mesh(geo(new THREE.BoxGeometry(4,4,0.25)),MAT.cabin); doors.position.set(0,2,1.9); doors.visible=false; cab.add(doors);
-  const lamp=new THREE.Mesh(geo(new THREE.BoxGeometry(1,0.1,1)),MAT.fixtureOn); lamp.position.set(0,3.9,0); cab.add(lamp);
-  cab.position.set(cx,0,cz); world.add(cab);
-  elevatorInfo={x:cx,z:cz,cab,doors,lamp,busy:false};
-  interactables.push({x:cx,z:cz,r:2.2,prompt:'Operate Freight Elevator [hold E]',dur:1.5,
+  // fully detailed cabin — art layer builds brushed-metal + wood-panel interior,
+  // sliding doors, floor screen, and the numbered button panel
+  const built=(typeof artElevatorCabin==='function')?artElevatorCabin(cx,cz)
+    :(()=>{ const cab=new THREE.Group();
+        const back=new THREE.Mesh(geo(new THREE.BoxGeometry(4,4,0.3)),MAT.cabin); back.position.set(0,2,-1.8); cab.add(back);
+        const doors=new THREE.Mesh(geo(new THREE.BoxGeometry(4,4,0.25)),MAT.cabin); doors.position.set(0,2,1.9); doors.visible=false; cab.add(doors);
+        const lamp=new THREE.Mesh(geo(new THREE.BoxGeometry(1,0.1,1)),MAT.fixtureOn); lamp.position.set(0,3.9,0); cab.add(lamp);
+        cab.position.set(cx,0,cz); world.add(cab); return {cab,doorL:doors,doorR:null,lamp,screen:null,panelLights:[]}; })();
+  elevatorInfo={x:cx,z:cz,busy:false,...built};
+  // interacting opens the elevator MENU (manual floor selection) instead of
+  // an immediate ride
+  interactables.push({x:cx,z:cz,r:2.4,dur:0.6,prompt:'Elevator Panel [hold E]',
+    getPrompt:()=>elevatorInfo.busy?'':'Elevator Panel [hold E]',
     canUse:()=>!elevatorInfo.busy&&game.state==='play',
-    onDone:()=>startElevatorTransit()});
+    onDone:()=>openElevatorMenu()});
 }
 
 function buildGeneratorRoom(rng){
@@ -1553,8 +1623,16 @@ function spawnPopulation(rng,floorIdx,biome){
     case 'LV12245':spawnAt('stocker',6,e=>{e.provokedOnly=true;}); return;   // Warehouse Operators
     case 'LV2000': spawnAt('stocker',4,e=>{e.waterBorn=true;}); spawnAt('crawler',2); return; // Water Workers
     case 'LV404':  spawnAt('faceless',2); spawnAt('stocker',2,variant); return;
-    case 'LV777':  return;                                   // nothing hunts here
-    case 'LVAPO':  return;                                   // the Sun and the Guardian are enough
+    case 'LV011':  spawnAt('worker',5,e=>{e.passive=true;}); return;         // cold workers, harmless
+    case 'LV045':  spawnAt('crawler',5); return;                             // boiler crawlers
+    case 'LV090':  return;                                                   // Safe, surreal, empty
+    case 'LV222':  spawnAt('greeter',3,variant); spawnAt('stocker',2,variant); return;
+    case 'LV333':  spawnAt('stocker',4,variant); spawnAt('faceless',1); return; // echo/mimic
+    case 'LV515':  spawnAt('stocker',4,e=>{e.waterBorn=true;}); spawnAt('crawler',3); return;
+    case 'LV808':  spawnAt('greeter',2,variant); return;                     // + mannequin stalkers from dressing
+    case 'LV999':  return;                                                   // golden safe room
+    case 'LV777':  return;                                                   // nothing hunts here
+    case 'LVAPO': case 'LVAPO0': return;                                     // the Sun and the Guardian are enough
   }
   spawnAt('stocker',3+Math.floor(f*0.8),liminal?variant:null);
   spawnAt('greeter',biome==='BACKROOMS'?1:2,liminal?variant:null);
@@ -2341,6 +2419,7 @@ let waterPlane=null, mannequins=[], portgens=[], floorProdMesh=null, seasonalBli
 function artResetFloorState(){
   waterPlane=null; mannequins=[]; floatDebris=[]; portgens=[];
   floorProdMesh=null; seasonalBlink=null;
+  boilerVents=[]; neonLights=[]; factoryBelts=[];
   if(typeof artApoReset==='function')artApoReset();
   game.baseFloodDepth=0; game.floodDepth=0; game.floodStage=0; game.floodClock=0;
   if(game.weather==='FLOOD')game.weather='DRIZZLE'; // new floor drains the flood
@@ -2409,8 +2488,8 @@ function artLiminalDress(biome,rng){
   const spot=(fn,n)=>{ for(let i=0;i<n;i++){ for(let t=0;t<24;t++){
     const cx=(6+rng()*(GRID_W-12))|0, cz=(6+rng()*(GRID_D-12))|0;
     if(grid[gi(cx,cz)]===G_WALK&&!nearRooms(cx,cz)){ const [wx,wz]=cellToWorld(cx,cz); fn(wx,wz); break; } } } };
-  if(biome==='SEASONAL'||biome==='LV666'){
-    spot((x,z)=>artMannequin(x,z,rng),biome==='LV666'?16:9);
+  if(biome==='SEASONAL'||biome==='LV666'||biome==='LV808'){
+    spot((x,z)=>artMannequin(x,z,rng),biome==='LV666'?16:biome==='LV808'?18:9);
     // Christmas trees in July: dark cones on trunks
     const needle=new THREE.MeshStandardMaterial({color:0x1d3a24,roughness:0.9}); disposables.push(needle);
     spot((x,z)=>{ const t=new THREE.Group();
@@ -2447,8 +2526,42 @@ function artLiminalDress(biome,rng){
       floatDebris.push(m); }
   }
   if(biome==='WRONG'){ /* corruption lives in artSignageWrong + product glitching */ }
+
+  // ---- new-level set dressing ----
+  if(biome==='LV011'){ // FROZEN PRODUCE: frost patches + drifting cold fog
+    const frost=new THREE.MeshStandardMaterial({color:0xcfe4ee,roughness:0.3,metalness:0.1,transparent:true,opacity:0.6}); disposables.push(frost);
+    spot((x,z)=>{ const m=new THREE.Mesh(geo(new THREE.CircleGeometry(1+rng()*1.6,10)),frost);
+      m.rotation.x=-Math.PI/2; m.position.set(x,0.02,z); world.add(m); },16);
+  }
+  if(biome==='LV045'){ // BACKROOM BOILER: fat pipes + steam vents
+    const pipeMat=new THREE.MeshStandardMaterial({map:TX.rust,roughness:0.7,metalness:0.6,color:0x8a5a3a}); disposables.push(pipeMat);
+    for(let i=0;i<10;i++){ const cz=-HALF_D+6+rng()*(GRID_D-12);
+      const p=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.18,0.18,GRID_W-8,8)),pipeMat);
+      p.rotation.z=Math.PI/2; p.position.set(0,0.6+rng()*3.2,cz); world.add(p); }
+    spot((x,z)=>{ boilerVents.push({x,z,t:rng()*3}); const v=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.15,0.2,0.4,8)),pipeMat);
+      v.position.set(x,0.2,z); world.add(v); },10);
+  }
+  if(biome==='LV090'){ // NEON ISLES: glowing product blocks + colored point lights
+    const neon=[0xff2fa0,0x2fffe0,0xffe02f,0x8a2fff,0x2fff5a];
+    spot((x,z)=>{ const col=neon[(rng()*neon.length)|0];
+      const m=new THREE.Mesh(geo(new THREE.BoxGeometry(0.5,0.5,0.5)),new THREE.MeshBasicMaterial({color:col}));
+      m.position.set(x,1+rng()*1.5,z); world.add(m);
+      const L=new THREE.PointLight(col,0.7,6,2); L.position.set(x,1.5,z); world.add(L); neonLights.push(L); },14);
+  }
+  if(biome==='LV808'){ // MANNEQUIN FACTORY: conveyor belts + half-built forms
+    const belt=new THREE.MeshStandardMaterial({color:0x1a1a1c,roughness:0.7}); disposables.push(belt);
+    const frame=new THREE.MeshStandardMaterial({map:TX.metal,roughness:0.5,metalness:0.7}); disposables.push(frame);
+    for(let i=0;i<4;i++){ const cz=-HALF_D+10+i*(GRID_D-20)/3;
+      const b=new THREE.Mesh(geo(new THREE.BoxGeometry(GRID_W-16,0.3,1.4)),belt); b.position.set(0,0.6,cz); world.add(b);
+      const f=new THREE.Mesh(geo(new THREE.BoxGeometry(GRID_W-16,0.1,1.7)),frame); f.position.set(0,0.4,cz); world.add(f);
+      factoryBelts.push({z:cz,y:0.8}); }
+  }
+  if(biome==='LV999'){ // GOLDEN BREAKROOM: warm point lights
+    for(let i=0;i<4;i++){ const [wx,wz]=cellToWorld((20+rng()*(GRID_W-40))|0,(20+rng()*(GRID_D-40))|0);
+      const L=new THREE.PointLight(0xffcf7a,1.1,12,2); L.position.set(wx,3,wz); world.add(L); }
+  }
 }
-let floatDebris=[];
+let floatDebris=[], boilerVents=[], neonLights=[], factoryBelts=[];
 
 // ---------- CORRUPTED SIGNAGE (Wrong Walmart) ----------
 function artSignageWrong(rng){
@@ -2502,7 +2615,25 @@ function playerWading(){ return (game.floodDepth||0)>0.1; }
 
 // ---------- LIMINAL RUNTIME (hum depth, living fog, product glitch, mimic) --
 let glitchT=0,whisperT=30,mimicQueue=[],breathT=0;
+function levelFxUpdate(dt){
+  // BOILER steam vents: periodic scalding burst
+  for(const v of boilerVents){ v.t-=dt;
+    if(v.t<=0){ v.t=2.5+Math.random()*3;
+      if(dist2d(v.x,v.z,player.x,player.z)<2){ damagePlayer(9,'steam'); subtitle('Scalding steam!','#ffb0a0',1.5); }
+      AudioEngine.drip&&AudioEngine.staticBurst(0.3,0.05); } }
+  // NEON pulse
+  for(const L of neonLights)L.intensity=0.5+Math.abs(Math.sin(game.time*2+L.position.x))*0.5;
+  // FACTORY: mannequins slide down the belt, then step off (spawn stalker)
+  if(game.biome==='LV808'&&factoryBelts.length){
+    game._beltT=(game._beltT||0)+dt;
+    if(game._beltT>7&&mannequins.length<26){ game._beltT=0;
+      const b=factoryBelts[(Math.random()*factoryBelts.length)|0];
+      const [wx,wz]=[(Math.random()-0.5)*(GRID_W-16),b.z];
+      const [cx,cz]=worldToCell(wx,wz); if(!cellBlocked(cx,cz)){ artMannequin(wx,wz,Math.random); AudioEngine.clank&&AudioEngine.clank(); } }
+  }
+}
 function liminalUpdate(dt){
+  levelFxUpdate(dt);
   // lights hum louder the deeper you go
   AudioEngine.humLevel(0.018+Math.min(game.floor*0.004,0.03)+(game.liminal?0.02:0));
   // the Faceless breathes — you hear it before you ever see it
@@ -2713,11 +2844,15 @@ function artApoReset(){ sorrowSun=null; guardian=null; escapeGate=null; }
 
 // per-frame Everscorch logic: burning air, wandering Sun, judgment
 function apoUpdate(dt){
-  if(game.biome!=='LVAPO')return;
-  // the air burns matter — mercy zone near the Gate
-  const nearGate=escapeGate&&dist2d(player.x,player.z,escapeGate.x,escapeGate.z)<8;
-  if(!nearGate){ player.hp-=1.1*dt; if(player.hp<=0)die('heat'); addFear(dt*1.5); }
-  if(sorrowSun){
+  const full=game.biome==='LVAPO';        // Apollyon: burning air + Sorrow Sun
+  const dawn=game.biome==='LVAPO0';       // Dawn Gate: Archon-Safe rehearsal
+  if(!full&&!dawn)return;
+  // the air burns matter (full Apollyon only) — mercy zone near the Gate
+  if(full){
+    const nearGate=escapeGate&&dist2d(player.x,player.z,escapeGate.x,escapeGate.z)<8;
+    if(!nearGate){ player.hp-=1.1*dt; if(player.hp<=0)die('heat'); addFear(dt*1.5); }
+  }
+  if(sorrowSun&&full){
     // wandering: slow lissajous drift across the expanse
     sorrowSun.x=Math.sin(game.time*0.07)*(HALF_W-18);
     sorrowSun.z=Math.cos(game.time*0.05)*(HALF_D-14);
@@ -2752,8 +2887,9 @@ function apoUpdate(dt){
       if(guardian.warnCd<=0){ guardian.warnCd=3;
         guardian.warnings++;
         if(guardian.warnings===1)subtitle('THE GUARDIAN OF ETERNESS raises the sword of the sun. Kneel. Holster the fire.','#ffb347',4);
-        else { damagePlayer(30,'guardian'); shakeCam(1.4);
-          subtitle('Judgment. The light takes its tithe.','#ff8855',3); } }
+        else if(full){ damagePlayer(30,'guardian'); shakeCam(1.4);
+          subtitle('Judgment. The light takes its tithe.','#ff8855',3); }
+        else { shakeCam(0.6); subtitle('The echo only rehearses the judgment. In the true Expanse, it will not.','#ffd77a',3); } }
     }
   }
 }
@@ -2766,6 +2902,85 @@ ICONS.wrongcard='<rect x="3" y="7" width="18" height="11" rx="1.5" fill="current
 ICONS.mapfrag='<path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z" fill="currentColor" opacity="0.85"/><path d="M9 4v14M15 6v14" stroke="#0a0c10" stroke-width="1.2"/>';
 ICONS.proto='<rect x="5" y="8" width="14" height="10" rx="2" fill="currentColor"/><circle cx="12" cy="6" r="2.5" stroke="currentColor" stroke-width="1.6" fill="none"/><circle cx="12" cy="13" r="2" fill="#0a0c10"/>';
 ICONS.realitykey='<circle cx="7" cy="12" r="3.4" stroke="currentColor" stroke-width="2" fill="none"/><path d="M10.4 12H21M17 12v3.4M19.6 12v2.4" stroke="currentColor" stroke-width="2"/>';
+
+// ============================================================================
+// ELEVATOR CABIN — brushed metal + wood paneling, sliding doors, button panel,
+// floor display screen. Returns handles the transit animation drives.
+// ============================================================================
+function artElevatorCabin(cx,cz){
+  const g=new THREE.Group(); g.position.set(cx,0,cz);
+  const steel=new THREE.MeshStandardMaterial({map:TX.metal,roughness:0.4,metalness:0.8,color:0x8a9098}); disposables.push(steel);
+  const wood=new THREE.MeshStandardMaterial({color:0x6b4a2c,roughness:0.6}); disposables.push(wood);
+  const trim=new THREE.MeshStandardMaterial({map:TX.metal,roughness:0.3,metalness:0.9,color:0xc8b070}); disposables.push(trim);
+  const W=4.2,H=4.2,D=4.2;
+  // shell: back + sides + ceiling + floor pad
+  g.add(_box(W,H,0.25,steel,0,H/2,-D/2));
+  [-1,1].forEach(s=>g.add(_box(0.25,H,D,steel,s*W/2,H/2,0)));
+  g.add(_box(W,0.25,D,steel,0,H,0));
+  g.add(_box(W,0.08,D,steel,0,0.04,0));
+  // wood wainscot panels on back + sides
+  g.add(_box(W-0.6,1.6,0.06,wood,0,1.3,-D/2+0.16));
+  [-1,1].forEach(s=>{ const p=_box(0.06,1.6,D-0.6,wood,s*(W/2-0.16),1.3,0); g.add(p); });
+  // gold trim rails
+  g.add(_box(W-0.4,0.06,0.06,trim,0,2.2,-D/2+0.18));
+  // ceiling light panel
+  const lamp=_box(1.6,0.08,1.6,MAT.fixtureOn,0,H-0.1,0); g.add(lamp);
+  const ceilLight=new THREE.PointLight(0xfff2d0,1.1,7,2); ceilLight.position.set(0,H-0.4,0); g.add(ceilLight);
+  // twin sliding doors (front)
+  const doorL=_box(W/2,H-0.2,0.2,steel,-W/4,H/2,D/2-0.05);
+  const doorR=_box(W/2,H-0.2,0.2,steel, W/4,H/2,D/2-0.05);
+  doorL.userData.closedX=-W/4; doorL.userData.openX=-W/2-0.1;
+  doorR.userData.closedX= W/4; doorR.userData.openX= W/2+0.1;
+  doorL.visible=doorR.visible=false; g.add(doorL); g.add(doorR);
+  // floor DISPLAY SCREEN above the doors
+  elevScreenTex=makeElevScreen('B1');
+  const screen=new THREE.Mesh(geo(new THREE.PlaneGeometry(1.2,0.42)),new THREE.MeshBasicMaterial({map:elevScreenTex}));
+  screen.position.set(0,H-0.5,-D/2+0.19); g.add(screen);
+  // elevator SYMBOL icon plaque beside the panel
+  const symTex=TextureFactory.label('▲\n▼',{w:64,h:96,bg:'#101418',fg:'#ffd23a',size:34});
+  const sym=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.28,0.4)),new THREE.MeshBasicMaterial({map:symTex,transparent:true}));
+  sym.position.set(W/2-0.2,2.3,1.2); sym.rotation.y=-Math.PI/2; g.add(sym);
+  // BUTTON PANEL on the right wall — glowing indicator + control buttons
+  const panelLights=[];
+  const panel=_box(0.06,1.7,0.7,new THREE.MeshStandardMaterial({map:TX.metal,roughness:0.35,metalness:0.85,color:0x6a7078}),W/2-0.18,1.6,0.9);
+  disposables.push(panel.material); g.add(panel);
+  const btnGeo=geo(new THREE.CylinderGeometry(0.05,0.05,0.03,10));
+  const mkBtn=(y,zz,col)=>{ const b=new THREE.Mesh(btnGeo,new THREE.MeshBasicMaterial({color:col}));
+    b.rotation.z=Math.PI/2; b.position.set(W/2-0.2,y,zz); g.add(b); panelLights.push(b); return b; };
+  // indicator light (top) + door open/close + alarm
+  const indicator=mkBtn(2.35,0.9,0x33ff66);
+  mkBtn(0.95,0.72,0x66aaff);  // door open
+  mkBtn(0.95,1.08,0x66aaff);  // door close
+  mkBtn(0.78,0.9,0xff3333);   // alarm
+  // 4x2 floor buttons grid, glowing amber
+  for(let r=0;r<4;r++)for(let c=0;c<2;c++)mkBtn(1.95-r*0.28,0.78+c*0.24,0xffb84a);
+  world.add(g);
+  return {cab:g,doorL,doorR,lamp,ceilLight,screen,indicator,panelLights};
+}
+let elevScreenTex=null;
+function makeElevScreen(txt){
+  const [c,x]=_cvWH(192,72); x.fillStyle='#0a0e08'; x.fillRect(0,0,192,72);
+  x.fillStyle='#66ff88'; x.font='bold 44px "Courier New",monospace'; x.textAlign='center'; x.textBaseline='middle';
+  x.shadowColor='#33ff66'; x.shadowBlur=8; x.fillText(txt,96,38);
+  const t=new THREE.CanvasTexture(c); t.anisotropy=4; disposables.push(t); return t;
+}
+function setElevScreen(txt){
+  if(!elevScreenTex)return;
+  const c=elevScreenTex.image, x=c.getContext('2d');
+  x.fillStyle='#0a0e08'; x.fillRect(0,0,c.width,c.height);
+  x.fillStyle='#66ff88'; x.font='bold 44px "Courier New",monospace'; x.textAlign='center'; x.textBaseline='middle';
+  x.shadowColor='#33ff66'; x.shadowBlur=8; x.fillText(txt,c.width/2,c.height/2+2);
+  elevScreenTex.needsUpdate=true;
+}
+// slide doors: p=0 closed, p=1 open
+function setElevatorDoors(p){
+  const e=elevatorInfo; if(!e||!e.doorL)return;
+  e.doorL.visible=e.doorR.visible=(p<0.98);
+  if(e.doorL.userData.closedX!==undefined){
+    e.doorL.position.x=lerp(e.doorL.userData.closedX,e.doorL.userData.openX,p);
+    e.doorR.position.x=lerp(e.doorR.userData.closedX,e.doorR.userData.openX,p);
+  }
+}
 
 // ================================ SECTION 11: INTERACTION ENGINE ===========
 function findInteractTarget(){
@@ -3035,6 +3250,11 @@ function updateLightingMood(initial){
     hemiLight.intensity=0.25;
     scene.background=new THREE.Color(0x2a0c04);
     scene.fog.density=0.028; scene.fog.color.setHex(0x2a0e04);
+  } else if(game.biome==='LVAPO0'){        // DAWN GATE: soft golden threshold
+    ambientLight.color.setHex(0xffd88a); ambientLight.intensity=0.6;
+    hemiLight.intensity=0.4;
+    scene.background=new THREE.Color(0x3a2c10);
+    scene.fog.density=0.045; scene.fog.color.setHex(0x4a3a18);
   } else ambientLight.color.setHex(0xbfc4cc);
   // fixture states
   fixtures.forEach(f=>{
@@ -3166,55 +3386,129 @@ function showLevelCard(biome,secs){
   const m=LEVEL_META[biome]||{lv:'???',name:biome,clazz:'PENDING',intro:''};
   el('lcLevel').textContent='LEVEL '+m.lv;
   el('lcName').textContent=m.name;
-  const cl=el('lcClass'); cl.textContent='CLASS: '+m.clazz;
-  cl.style.color=CLASS_COLORS[m.clazz]||'#e8a04a';
+  // clean danger-class badge
+  const cl=el('lcClass'); cl.textContent=m.clazz;
+  const col=CLASS_COLORS[m.clazz]||'#e8a04a';
+  cl.style.color=col; cl.style.borderColor=col;
   el('lcIntro').textContent=m.intro;
   const danger=/KETER|APOLLYON/.test(m.clazz);
   el('lcWarn').style.display=danger?'block':'none';
   const card=el('levelCard'); card.style.display='flex';
   card.classList.toggle('danger',danger);
+  // animated fade-in (retrigger by reflow)
+  const lc=card.querySelector('.lc'); lc.style.animation='none'; void lc.offsetWidth; lc.style.animation='';
   clearTimeout(showLevelCard._t);
-  showLevelCard._t=setTimeout(()=>card.style.display='none',secs*1000);
+  showLevelCard._t=setTimeout(()=>closeLevelCard(),secs*1000);
+  // ambient sound: soft chime for safe, static+thunder for dangerous
   if(danger){ AudioEngine.staticBurst(1.4,0.1); AudioEngine.thunder(); }
+  else AudioEngine.chime&&AudioEngine.chime();
 }
+function closeLevelCard(){ el('levelCard').style.display='none'; clearTimeout(showLevelCard._t); }
 
-function startElevatorTransit(){
+// destBiome: a forced biome key, or null for the normal random descent.
+function startElevatorTransit(destBiome){
+  if(elevatorInfo.busy)return;
   elevatorInfo.busy=true; game.state='transit';
   const px=elevatorInfo.x, pz=elevatorInfo.z;
   player.x=px; player.z=pz; cancelInteract();
+  game.forcedBiome=destBiome||null;
   AudioEngine.elevator(true); AudioEngine.staticBurst(1,0.05);
   // announce the destination — the panel already knows where you're going
-  const destBiome=previewBiome(game.floor+1);
-  showLevelCard(destBiome,10.5);
+  const dest=destBiome||previewBiome(game.floor+1);
   intercom(randPick(Math.random,[
     'Going down.',
     'Thank you for shopping with us. And below us.',
     'Now arriving: housewares, garden, and the dark.',
     'Floor '+(game.floor+1)+'. Everything must go.',
   ]),'creepy');
-  // door slide animation state
-  const doors=elevatorInfo.doors;
-  doors.visible=true; doors.position.y=6;
-  let t=0; const dur=7.5;
+  const dangerDest=/KETER|APOLLYON/.test((LEVEL_META[dest]||{}).clazz||'');
+  let t=0; const dur=8.0, closeDur=1.4, openStart=dur-1.2;
+  const startFloor=game.floor;
+  if(typeof setElevatorDoors==='function')setElevatorDoors(0); // start open
   const iv=setInterval(()=>{
     t+=0.1;
-    doors.position.y=Math.max(2,6-t*5);                 // doors slide shut
-    // cabin light flicker + shudder
-    elevatorInfo.lamp.material=Math.random()<0.85?MAT.fixtureOn:MAT.fixtureOff;
-    shakeCam(0.18);
-    player.x=px; player.z=pz;                           // safety boundary: locked in cabin
+    // 1) doors slide CLOSED over closeDur
+    if(t<=closeDur&&typeof setElevatorDoors==='function')setElevatorDoors(1-t/closeDur);
+    // 2) travel: shake, light flicker, rolling floor counter on the screen
+    if(elevatorInfo.lamp)elevatorInfo.lamp.material=Math.random()<0.86?MAT.fixtureOn:MAT.fixtureOff;
+    if(elevatorInfo.ceilLight)elevatorInfo.ceilLight.intensity=Math.random()<0.86?1.1:0.2;
+    shakeCam(dangerDest?0.3:0.18);
+    if(typeof setElevScreen==='function'&&t>closeDur){
+      const shown='B'+(startFloor+Math.min(Math.floor((t-closeDur)/((openStart-closeDur))*(startFloor+1)),startFloor));
+      setElevScreen(shown);
+    }
+    player.x=px; player.z=pz;                            // safety boundary: locked in cabin
     if(t>=dur){
       clearInterval(iv);
       game.floor++;
       buildFloor(game.floor);
-      const e=elevatorInfo; player.x=e.x; player.z=e.z; // arrive inside new cabin
-      // arrival: doors slide open
-      e.doors.position.y=6; e.doors.visible=false; e.busy=false;
+      const e=elevatorInfo; player.x=e.x; player.z=e.z;  // arrive inside new cabin
+      if(typeof setElevScreen==='function')setElevScreen('B'+game.floor);
+      // arrival: chime, then doors slide open (jam on dangerous floors)
       AudioEngine.elevator(false); AudioEngine.chime();
-      game.state='play';
+      const jam=/KETER|APOLLYON/.test((LEVEL_META[game.biome]||{}).clazz||'');
+      animateArrivalDoors(jam);
+      showLevelCard(game.biome,9.5);
+      game.state='play'; e.busy=false;
       rebuildFlowField(player.x,player.z);
     }
   },100);
+}
+// doors slide open on arrival; KETER/APOLLYON floors JAM partway with a screech
+function animateArrivalDoors(jam){
+  let p=0; const iv=setInterval(()=>{
+    p+=0.06;
+    let target=p;
+    if(jam&&p>0.45){ target=0.45+Math.sin(game.time*40)*0.03; // stutter/jam
+      if(p>0.7){ AudioEngine.clank&&AudioEngine.clank(); target=Math.min(1,0.45+(p-0.7)*1.2); } }
+    if(typeof setElevatorDoors==='function')setElevatorDoors(Math.min(1,target));
+    if(p>=1.3)clearInterval(iv);
+  },40);
+}
+
+// ---- ELEVATOR MENU (manual floor selection) ----
+// Curated button order: numbered store floors, then special/anomalous levels.
+const ELEV_MENU_ORDER=['RETAIL','ARMORY','COLD','BACKROOMS','YELLOW_HALL','EMPLOYEE_MAZE',
+  'SEASONAL','WRONG','CHECKOUTS','FLOODED','LV000','LV011','LV020','LV045','LV090','LV100',
+  'LV222','LV234','LV333','LV404','LV515','LV666','LV777','LV808','LV999','LV12245','LV2000',
+  'LVAPO0','LVAPO'];
+function apoUnlocked(){ return (inv.counts.realitykey||0)>0||(inv.counts.wrongcard||0)>0; }
+function openElevatorMenu(){
+  game.paused=true;
+  document.exitPointerLock&&document.exitPointerLock();  // free the cursor for the panel
+  const grid=el('elevGrid'); grid.innerHTML='';
+  // always-available: descend one floor at random (normal progression)
+  const desc=document.createElement('div'); desc.className='ebtn descend';
+  desc.innerHTML='<span class="ebLv">▼</span><span class="ebName">DESCEND DEEPER</span><span class="ebClass" style="color:#cfe8b8">RANDOM FLOOR</span>';
+  desc.onclick=()=>chooseFloor(null); grid.appendChild(desc);
+  ELEV_MENU_ORDER.forEach(b=>{
+    const m=LEVEL_META[b]||{lv:'?',name:b,clazz:'PENDING'};
+    const discovered=b==='RETAIL'||(game.discovered&&game.discovered[b]);
+    const isApo=b==='LVAPO';
+    const locked=isApo?!apoUnlocked():!discovered;
+    const div=document.createElement('div');
+    div.className='ebtn'+(locked?' locked':'')+(isApo?' apo':'');
+    const cls=CLASS_COLORS[m.clazz]||'#8fa3b8';
+    div.innerHTML=`<span class="ebLv">${m.lv}</span>`+
+      `<span class="ebName">${locked&&!discovered&&!isApo?'UNDISCOVERED':m.name}</span>`+
+      `<span class="ebClass" style="color:${cls}">${locked&&!discovered&&!isApo?'':m.clazz}</span>`;
+    if(!locked)div.onclick=()=>chooseFloor(b);
+    else if(isApo)div.title='Requires the Reality Key or a Wrong-Floor Keycard';
+    grid.appendChild(div);
+  });
+  el('elevMenu').style.display='flex';
+}
+function chooseFloor(biome){
+  el('elevMenu').style.display='none'; game.paused=false;
+  // teleport into the cabin if we opened the menu remotely
+  if(elevatorInfo){ player.x=elevatorInfo.x; player.z=elevatorInfo.z; }
+  startElevatorTransit(biome);   // null => random descent
+}
+function findElevator(){
+  if(!elevatorInfo)return;
+  player.x=elevatorInfo.x; player.z=elevatorInfo.z;
+  el('elevMenu').style.display='none'; el('pauseOverlay').style.display='none'; game.paused=false;
+  subtitle('The doors were closer than you thought.','#8fa3b8',2.5);
 }
 
 // ================================ SECTION 19: LORE / UI / HUD ===============
@@ -3341,7 +3635,7 @@ function openJournal(){
   });
 }
 function closeOverlays(){
-  ['craftOverlay','journalOverlay','noteOverlay','pauseOverlay','helpOverlay'].forEach(id=>el(id).style.display='none');
+  ['craftOverlay','journalOverlay','noteOverlay','pauseOverlay','helpOverlay','elevMenu'].forEach(id=>el(id).style.display='none');
   game.paused=false;
 }
 function setPaused(p){
@@ -3375,10 +3669,14 @@ function onKeyDown(code){
       } break;
     case 'Escape': if(anyOverlayOpen())closeOverlays(); else setPaused(!game.paused); break;
     case 'KeyH': el('helpOverlay').style.display='flex'; game.paused=true; break;
+    case 'KeyM': // call the elevator menu from anywhere
+      if(el('elevMenu').style.display==='flex'){ el('elevMenu').style.display='none'; game.paused=false; }
+      else if(!elevatorInfo||!elevatorInfo.busy)openElevatorMenu();
+      break;
   }
 }
 function craftToggle(){ el('craftOverlay').style.display==='flex'?closeOverlays():openCraft(); }
-function anyOverlayOpen(){ return ['craftOverlay','journalOverlay','noteOverlay','helpOverlay'].some(id=>el(id).style.display==='flex'); }
+function anyOverlayOpen(){ return ['craftOverlay','journalOverlay','noteOverlay','helpOverlay','elevMenu'].some(id=>el(id).style.display==='flex'); }
 function tryToggleFlashOrGrab(){ player.flashlight=!player.flashlight; AudioEngine.click(1100,0.1); }
 
 // ================================ SECTION 21: DEATH / RESTART ===============
@@ -3389,6 +3687,7 @@ function die(src){
     manager:'The Night Shift Manager filed you under CLEARANCE.',crawler:'Dragged into the backrooms.',
     specter:'The blackout kept you.',fire:'Burned in your own barricade line.',cart:'Trampled by the stampede.',
     mannequin:'The mannequins finally reached you.',heat:'The air of the Everscorch took you apart.',
+    steam:'Boiled alive in the backroom steam.',
     sun:'The Sorrow Sun looked at you directly.',guardian:'Judged unworthy by the Guardian of Eterness.'};
   el('deathCause').textContent=causes[src]||'The store closed around you.';
   el('deathStats').textContent=`Floors: B${game.floor} · Days: ${game.day} · Kills: ${game.kills} · Documents: ${game.notesFound.length}/${LORE.length}`;
@@ -3495,6 +3794,10 @@ function boot(){
   el('winRestartBtn').onclick=()=>{ restart(); el('cv').requestPointerLock(); };
   el('resumeBtn').onclick=()=>{ setPaused(false); el('cv').requestPointerLock(); };
   document.querySelectorAll('.closeBtn').forEach(b=>b.onclick=()=>{ closeOverlays(); el('cv').requestPointerLock(); });
+  el('lcClose').onclick=()=>closeLevelCard();
+  el('elevClose').onclick=()=>{ closeOverlays(); el('cv').requestPointerLock(); };
+  el('elevFind').onclick=()=>{ findElevator(); el('cv').requestPointerLock(); };
+  el('pauseFind') && (el('pauseFind').onclick=()=>{ findElevator(); el('cv').requestPointerLock(); });
   refreshHotbar();
   requestAnimationFrame(tick);
 }
