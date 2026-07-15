@@ -1335,7 +1335,7 @@ function updatePlayer(dt){
   player.yaw-=mdx*0.0023; player.pitch=clamp(player.pitch-mdy*0.0023,-1.45,1.45);
 
   const f=(Input.keys.KeyW?1:0)-(Input.keys.KeyS?1:0);
-  const s=(Input.keys.KeyD?1:0)-(Input.keys.KeyA?1:0);
+  const s=(Input.keys.KeyA?1:0)-(Input.keys.KeyD?1:0);
   player.crouch=!!(Input.keys.ControlLeft||Input.keys.KeyC);
   const wantRun=!!Input.keys.ShiftLeft&&f>0&&!player.crouch;
   if(player.stamina<=1)player.exhausted=true;
