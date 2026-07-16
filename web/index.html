@@ -137,6 +137,35 @@
   .elevActions{display:flex;gap:10px;justify-content:center;padding-top:14px;border-top:1px solid #1c2530;}
   .elevActions .btn{margin-top:0;padding:11px 22px;font-size:0.92em;}
   #genFind{border-color:#5fbf6a;color:#a8e0ae;} #genFind:hover{background:#5fbf6a;color:#0c150e;}
+  .ebPrev{display:flex;gap:8px;align-items:center;margin-top:6px;padding-top:6px;border-top:1px solid #1c2530;}
+  .ebThumb{width:34px;height:24px;border-radius:4px;border:1px solid #34404c;flex:none;}
+  .ebMeta{font-size:0.58em;color:#8fa3b8;letter-spacing:0.06em;line-height:1.5;}
+  /* inventory */
+  #invOverlay .panel{min-width:640px;max-width:760px;}
+  #invLayout{display:grid;grid-template-columns:1fr 220px;gap:16px;margin-top:10px;}
+  #invGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;max-height:44vh;overflow-y:auto;
+    padding:4px;background:#080b0f;border:1px solid #1c2530;border-radius:8px;}
+  .invItem{position:relative;background:linear-gradient(155deg,#121a23,#0d131a);border:1px solid #263242;
+    border-radius:7px;height:52px;display:flex;align-items:center;justify-content:center;cursor:grab;
+    transition:border-color .12s,transform .12s;}
+  .invItem:hover{border-color:#ffd76a;transform:translateY(-1px);}
+  .invItem:active{cursor:grabbing;}
+  .invCnt{position:absolute;bottom:2px;right:5px;font-size:0.62em;color:#cfe0ee;font-variant-numeric:tabular-nums;}
+  #invPreview{background:#080b0f;border:1px solid #1c2530;border-radius:8px;padding:14px;text-align:center;}
+  #invPrevIcon{margin:6px 0;} #invPrevName{color:#ffe9b0;font-size:0.95em;letter-spacing:0.06em;}
+  #invPrevDesc{color:#8fa3b8;font-size:0.74em;line-height:1.5;margin-top:8px;min-height:64px;text-align:left;}
+  #invPrevCount{color:#5d7088;font-size:0.68em;letter-spacing:0.12em;margin-top:8px;}
+  #invCraftRow{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:14px;
+    padding-top:12px;border-top:1px solid #1c2530;}
+  .invSlot{width:54px;height:54px;border:1px dashed #34404c;border-radius:8px;background:#0a0e13;
+    display:flex;align-items:center;justify-content:center;transition:border-color .12s;}
+  .invSlot.filled{border-style:solid;border-color:#5d7088;}
+  .invSlot:hover{border-color:#ffd76a;}
+  .slotHint{color:#34404c;font-size:1.3em;}
+  #invAssemble{margin-top:0;padding:11px 20px;font-size:0.88em;}
+  #invAssemble:disabled{opacity:0.35;cursor:not-allowed;}
+  #invAssemble:disabled:hover{background:#1a2430;color:#ffd76a;}
+  #invDragGhost{position:fixed;z-index:99;pointer-events:none;display:none;filter:drop-shadow(0 3px 8px #000);}
   ::-webkit-scrollbar{width:8px;} ::-webkit-scrollbar-thumb{background:#2c3540;border-radius:4px;}
 </style>
 
@@ -178,13 +207,37 @@
       <div><b>G</b> grab crate · <b>R</b> rotate · <b>R-CLICK</b> weld (carrying)</div>
       <div><b>B</b> crafting · <b>J</b> journal · <b>N</b> night vision</div>
       <div><b>Q</b> use medkit · <b>V</b> drink coffee</div>
-      <div><b>M</b> elevator menu (choose floor)</div>
+      <div><b>M</b> elevator menu · <b>I</b> inventory</div>
       <div><b>1–6</b> equipment · <b>H</b> help · <b>ESC</b> pause</div>
     </div>
     <center><button class="btn" id="startBtn">CLOCK IN</button></center>
     <p style="font-size:0.72em;color:#5d6f80;margin-bottom:0">Headphones recommended. All audio is synthesized live. Desktop + mouse required.</p>
   </div>
 </div>
+
+<div id="invOverlay" class="overlay">
+  <div class="panel">
+    <h2>INVENTORY</h2>
+    <p class="sub" style="color:#7d8ea0;font-size:0.8em;margin:2px 0 0">Drag components into the assembly slots. Hover an item for its file entry.</p>
+    <div id="invLayout">
+      <div>
+        <div id="invGrid"></div>
+        <div id="invCraftRow">
+          <div id="invSlots" style="display:flex;gap:8px"></div>
+          <button class="btn" id="invAssemble" disabled>ASSEMBLE</button>
+        </div>
+      </div>
+      <div id="invPreview">
+        <div id="invPrevIcon"></div>
+        <div id="invPrevName">—</div>
+        <div id="invPrevDesc">Select an item.</div>
+        <div id="invPrevCount"></div>
+      </div>
+    </div>
+    <center><button class="btn closeBtn">CLOSE [I]</button></center>
+  </div>
+</div>
+<div id="invDragGhost"></div>
 
 <div id="pauseOverlay" class="overlay">
   <div class="panel"><h2>PAUSED</h2>
@@ -658,8 +711,9 @@ const isLiminal=b=>LIMINAL_BIOMES.includes(b)||['LV234','LV404','LV666','LV222',
 
 // Per-biome palette applied to the SHARED materials — only one floor exists
 // at a time, so tinting in place is safe and free.
+let BIOME_TINTS=null;   // exposed for Floor Preview thumbnails (Room Leaper)
 function applyBiomeTint(biome){
-  const t={
+  const t=(BIOME_TINTS=BIOME_TINTS||{
     RETAIL:      {wall:0x8a9199,floor:0xb0ada4,ceil:0xffffff,fog:0x000000},
     ARMORY:      {wall:0x7d8189,floor:0xa8a49a,ceil:0xf2efe6,fog:0x000000},
     BACKROOMS:   {wall:0x6a6f75,floor:0xffffff,ceil:0xb9b4a5,fog:0x020202},
@@ -689,7 +743,7 @@ function applyBiomeTint(biome){
     LV999:       {wall:0xc8a860,floor:0xb08a48,ceil:0xf4e4b8,fog:0x1a1204},
     LVAPO0:      {wall:0xc0a870,floor:0xd8c088,ceil:0xf0d8a0,fog:0x2a2410},
     LVAPO:       {wall:0x7a4a30,floor:0xc49a58,ceil:0x501505,fog:0x2a0e04},
-  }[biome]||{wall:0x8a9199,floor:0xb0ada4,ceil:0xffffff,fog:0x000000};
+  })[biome]||{wall:0x8a9199,floor:0xb0ada4,ceil:0xffffff,fog:0x000000};
   MAT.wall.color.setHex(t.wall);
   MAT.floor.color.setHex(t.floor);
   MAT.ceil.color=new THREE.Color(t.ceil);
@@ -808,6 +862,12 @@ function buildFloor(floorIdx){
   // ---- populate employees ----
   spawnPopulation(rng,floorIdx,biome);
 
+  // ---- Nezer Room: appears without authorization. Chaos Level feeds it ----
+  if(typeof buildNezerRoom==='function'&&floorIdx>=2
+     &&!['LVAPO','LVAPO0','LV777','LV999'].includes(biome)
+     &&rng()<0.12+(game.chaosLevel||0)*0.06)
+    buildNezerRoom(rng);
+
   updateLightingMood(true);
   el('floorLabel').textContent='FLOOR B'+floorIdx+' — '+biome;
 }
@@ -843,6 +903,8 @@ function buildElevatorRoom(rng){
   const x0=GRID_W-12, z0=2, w=9, d=9;
   const door=[[x0, z0+4],[x0,z0+5]];
   carveRoom(x0,z0,w,d,door);
+  // heavy industrial safety door across the room doorway
+  if(typeof buildSafetyDoor==='function')buildSafetyDoor(door);
   const [cx,cz]=cellToWorld(x0+4,z0+4);
   // fully detailed cabin — art layer builds brushed-metal + wood-panel interior,
   // sliding doors, floor screen, and the numbered button panel
@@ -1191,6 +1253,8 @@ const ITEMS={
   coffee:{name:'Hot Coffee',icon:''}, keycard:{name:'Office Keycard',icon:''},
   wrongcard:{name:'Wrong-Floor Keycard',icon:''}, mapfrag:{name:'Distorted Map Fragment',icon:''},
   proto:{name:'Prototype Tech',icon:''}, realitykey:{name:'REALITY KEY',icon:''},
+  coggear:{name:'Cognitive Gear',icon:''}, goldbat:{name:'Golden Wire Wrapped Battery',icon:''},
+  leaper:{name:'Room Leaper',icon:''},
 };
 const RECIPES=[
   {out:'shotgun',n:1,tier:1,cost:{bolts:4,powder:1,pipe:2,handle:1},desc:'Massive close blast. Wild spread. 2 shells, slow reload. LOUD.'},
@@ -1207,7 +1271,8 @@ const RECIPES=[
   {out:'portgen',n:1,tier:2,cost:{battery:2,wires:4,pipe:1},desc:'Placed on assembly. Keeps fences live through blackouts within 10m — but it hums, and they hear it.'},
   {out:'plate',n:1,tier:2,cost:{pipe:2,bolts:4},desc:'Applied on assembly: reinforces your nearest welded barricade with +160 durability plating.'},
   {out:'booster',n:1,tier:2,cost:{battery:1,bolts:2},desc:'Applied on assembly: your nearest electric fence gains battery backup — live even in blackouts.'},
-  {out:'battery',n:2,tier:1,cost:{proto:1},desc:'Strip a Level 100^100 prototype for its power cells.'},
+  {out:'battery',n:2,tier:1,cost:{proto:1},desc:'Strip a Level 10^100 prototype for its power cells.'},
+  {out:'leaper',n:1,tier:2,cost:{coggear:1,goldbat:1,converter:1},desc:'THE ROOM LEAPER. Installs into the elevator panel: Floor Preview Mode. Every use raises the Chaos Level — Nezer activity and entity aggression follow.'},
 ];
 const LORE=[
  {t:'CRUMPLED SCHEDULE',b:'Week 340. Same names. Nobody remembers being hired. Nobody remembers the doors. Dana in Produce swears the parking lot is painted on. She stopped clocking out. Then she stopped being Dana.'},
@@ -1340,10 +1405,10 @@ class Enemy{
     if(this.provokedOnly&&!this.provoked)return false;     // Warehouse Operators: only if you started it
     // Crawlers keep store hours now: neutral wanderers by day, hunters at
     // night or in a blackout (their dark). Provoke one and it remembers.
-    if(this.type==='crawler')return game.shift==='NIGHT'||game.power==='OFF'||this.provoked;
-    return game.shift==='NIGHT'||this.type==='specter';
+    if(this.type==='crawler')return !!(game.shift==='NIGHT'||game.power==='OFF'||this.provoked);
+    return !!(game.shift==='NIGHT'||this.type==='specter');
   }
-  hearing(){ let h=this.def().hearing; if(game.weather==='STORM')h*=0.8; if(game.power==='OFF')h*=1.25; return h; }
+  hearing(){ let h=this.def().hearing*(this.hearMul||1); if(game.weather==='STORM')h*=0.8; if(game.power==='OFF')h*=1.25; return h; }
   canSeePlayer(){
     const d=this.def(); if(!d.vision)return false;
     if(player.hidden)return false;
@@ -1400,9 +1465,11 @@ class Enemy{
     this.animate(dt);
     this.tryAttackPlayer(dt,d);
     this.antiStuck(dt);
+    if(typeof variantVoiceUpdate==='function')variantVoiceUpdate(this,dt);
   }
   // --- movement helpers ---
   seek(tx,tz,speed,dt){
+    speed*=(this.speedMul||1);                      // floor variant + Chaos Level
     const dx=tx-this.x, dz=tz-this.z, l=Math.hypot(dx,dz)||1;
     this.vx=dx/l*speed; this.vz=dz/l*speed;
   }
@@ -1695,7 +1762,11 @@ function spawnPopulation(rng,floorIdx,biome){
     for(let t=0;t<30;t++){ const cx=(2+rng()*(GRID_W-4))|0, cz=(2+rng()*(GRID_D-4))|0;
       if(!cellBlocked(cx,cz)){ const [wx,wz]=cellToWorld(cx,cz);
         if(dist2d(wx,wz,player.x||0,player.z||0)>14){
-          const e=new Enemy(type,wx,wz); if(mod)mod(e); enemies.push(e); break; } } } } };
+          const e=new Enemy(type,wx,wz); if(mod)mod(e);
+          // floor-variant dressing: unique silhouette/tint/senses/voice per level
+          if(typeof applyBiomeVariant==='function'&&['stocker','greeter','roller','worker'].includes(type))
+            applyBiomeVariant(e);
+          enemies.push(e); break; } } } } };
   // liminal variant dresser: freeze-when-stared + uncanny body mods
   const variant=e=>{
     e.freezeWhenSeen=true;
@@ -1961,7 +2032,8 @@ function tickQuickMelee(dt){
     if(hit){
       AudioEngine.clank&&AudioEngine.clank(); shakeCam(0.4);
       sparkBurst(hit.x,hit.z);                       // metallic impact spark
-    } else AudioEngine.click(180,0.1);               // whiff
+    } else if(typeof nezerTapCheck==='function'&&nezerTapCheck()){ /* tapped the glass. noted. */ }
+    else AudioEngine.click(180,0.1);                 // whiff
   }
 }
 function hitscan(spreadRad,dmg,maxRange){
@@ -2333,8 +2405,12 @@ function artCheckout(wx,wz,laneNo){
   const screen=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.32,0.24)),new THREE.MeshBasicMaterial({color:0x1a3a1a})); screen.position.set(0.9,1.42,-0.03); g.add(screen);
   // lane number pole + light
   const pole=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.04,0.04,2.6,6)),MAT.barr); pole.position.set(-1.2,1.8,0); g.add(pole);
+  // glitch fix: two front-facing planes back-to-back — the lane number can
+  // never render mirrored from behind
   const tex=TextureFactory.label(''+laneNo,{w:128,h:128,bg:'#0a4d9c',fg:'#fff',size:90,border:'#fff',bw:6});
-  const num=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.7,0.7)),new THREE.MeshBasicMaterial({map:tex,side:THREE.DoubleSide})); num.position.set(-1.2,3.1,0); g.add(num);
+  const numMat=new THREE.MeshBasicMaterial({map:tex});
+  const num=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.7,0.7)),numMat); num.position.set(-1.2,3.1,0.01); g.add(num);
+  const num2=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.7,0.7)),numMat); num2.position.set(-1.2,3.1,-0.01); num2.rotation.y=Math.PI; g.add(num2);
   const laneLight=new THREE.Mesh(geo(new THREE.SphereGeometry(0.11,8,6)),MAT.fixtureOn); laneLight.position.set(-1.2,3.5,0); g.add(laneLight);
   g.position.set(wx,0,wz); world.add(g); return g;
 }
@@ -2399,8 +2475,9 @@ function artHumanoid(type,def){
     const faceKind=type==='greeter'?'greeter':type==='stocker'?'blind':'normal';
     const dayTex=TextureFactory.face(faceKind,false);
     const nightTex=TextureFactory.face(faceKind,true);
+    // DoubleSide: the face can never flicker out at oblique view angles
     const face=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.24,0.26)),
-      new THREE.MeshBasicMaterial({map:dayTex,transparent:true}));
+      new THREE.MeshBasicMaterial({map:dayTex,transparent:true,side:THREE.DoubleSide}));
     face.position.set(0,H*0.9,0.135); g.add(face);
     g.userData.face=face; g.userData.faceDay=dayTex; g.userData.faceNight=nightTex;
   }
@@ -2519,6 +2596,7 @@ const ICON_COLOR={
   converter:'#ffb84a',nvg:'#3ee08a',vest:'#3d6ab0',boots:'#8a6a42',portgen:'#4caf50',plate:'#9aa4ad',
   booster:'#ffcf5a',coffee:'#a5723f',keycard:'#2f8fe0',wrongcard:'#d64545',mapfrag:'#c7b287',
   proto:'#2fc0b0',realitykey:'#e8c24a',
+  coggear:'#c8d2dc',goldbat:'#e8c24a',leaper:'#a04ae8',
 };
 const K='#14161c';   // shared dark keyline
 const ICONS={
@@ -2552,6 +2630,9 @@ const ICONS={
   mapfrag:'<path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z" fill="#c7b287" stroke="'+K+'" stroke-width="0.6"/><path d="M9 4v14M15 6v14" stroke="#8a7550" stroke-width="1" opacity="0.7"/>',
   proto:'<rect x="5" y="8" width="14" height="10" rx="2" fill="#1c2e2c" stroke="#2fc0b0" stroke-width="1.4"/><circle cx="12" cy="6" r="2.5" stroke="#2fc0b0" stroke-width="1.6" fill="none"/><circle cx="12" cy="13" r="2" fill="#2fc0b0"/>',
   realitykey:'<circle cx="7" cy="12" r="3.4" stroke="#e8c24a" stroke-width="2" fill="#4a3a10"/><path d="M10.4 12H21M17 12v3.4M19.6 12v2.4" stroke="#e8c24a" stroke-width="2" stroke-linecap="round"/>',
+  coggear:'<circle cx="12" cy="12" r="6" fill="none" stroke="#c8d2dc" stroke-width="2.6"/><circle cx="12" cy="12" r="2" fill="#c8d2dc"/><g stroke="#c8d2dc" stroke-width="2"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></g>',
+  goldbat:'<rect x="8" y="5" width="8" height="15" rx="2" fill="#2a2622" stroke="'+K+'" stroke-width="0.5"/><rect x="10" y="3" width="4" height="2.5" fill="#e8c24a"/><path d="M8 9h8M8 12.5h8M8 16h8" stroke="#e8c24a" stroke-width="1.6"/>',
+  leaper:'<rect x="4" y="4" width="7" height="7" rx="1" fill="#a04ae8" opacity="0.9"/><rect x="13" y="13" width="7" height="7" rx="1" fill="#a04ae8" opacity="0.55"/><path d="M11 8h4a3 3 0 013 3v1" stroke="#e8c24a" stroke-width="1.8" fill="none" stroke-linecap="round"/><path d="M15.4 10.6L18 12l-2.9 1.1z" fill="#e8c24a"/>',
 };
 // SIGNATURE RINGS: each tool family gets its own ring pattern around the
 // icon so it reads at a glance — hazard dashes for weapons, dots for ammo,
@@ -2562,7 +2643,7 @@ const RING_FAMILY={};
 ['shells','rifleAmmo'].forEach(k=>RING_FAMILY[k]='ammo');
 ['nvg','vest','boots','plate','booster','portgen'].forEach(k=>RING_FAMILY[k]='gear');
 ['medkit','coffee'].forEach(k=>RING_FAMILY[k]='consumable');
-['keycard','wrongcard','mapfrag','realitykey','pressure','converter','proto'].forEach(k=>RING_FAMILY[k]='quest');
+['keycard','wrongcard','mapfrag','realitykey','pressure','converter','proto','coggear','goldbat','leaper'].forEach(k=>RING_FAMILY[k]='quest');
 function svgIcon(id,size=20){
   const g=ICONS[id]||'<circle cx="12" cy="12" r="6" fill="#8a95a3"/>';
   const chip=ICON_COLOR[id]||'#8a95a3';
@@ -2647,6 +2728,8 @@ function artResetFloorState(){
   boilerVents=[]; neonLights=[]; factoryBelts=[];
   if(typeof artApoReset==='function')artApoReset();
   if(typeof artBatteryReset==='function')artBatteryReset();
+  if(typeof nezerReset==='function')nezerReset();
+  if(typeof safetyDoorReset==='function')safetyDoorReset();
   game.baseFloodDepth=0; game.floodDepth=0; game.floodStage=0; game.floodClock=0;
   if(game.weather==='FLOOD')game.weather='DRIZZLE'; // new floor drains the flood
   AudioEngine.setBedLevel&&AudioEngine.setBedLevel('breath',0);
@@ -3485,6 +3568,18 @@ function artLootModelExtra(id,g,M){
     case 'portgen':{ g.add(_box(0.18,0.13,0.11,new THREE.MeshStandardMaterial({color:0x3a5a3a,roughness:0.6}),0,0.07,0));
       disposables.push(g.children[g.children.length-1].material);
       const h=new THREE.Mesh(geo(new THREE.TorusGeometry(0.05,0.012,6,10,Math.PI)),M.metal); h.position.set(0,0.14,0); g.add(h); return true; }
+    case 'coggear':{ // rotating mechanical stabilizer: toothed ring on a hub
+      const ring=new THREE.Mesh(geo(new THREE.TorusGeometry(0.09,0.025,8,16)),M.metal);
+      ring.rotation.x=Math.PI/2; ring.position.y=0.05; g.add(ring);
+      for(let i=0;i<8;i++){ const a=i/8*Math.PI*2;
+        const t=_box(0.03,0.04,0.03,M.metal,Math.cos(a)*0.115,0.05,Math.sin(a)*0.115); g.add(t); }
+      const hub=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.03,0.03,0.05,8)),M.brass); hub.position.y=0.05; g.add(hub);
+      g.userData.spin=true; return true; }
+    case 'goldbat':{ // high-capacity cell wound in gold filament
+      const c=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.06,0.06,0.22,10)),M.dark); c.position.y=0.11; g.add(c);
+      for(let i=0;i<4;i++){ const w=new THREE.Mesh(geo(new THREE.TorusGeometry(0.065,0.008,6,12)),M.gold);
+        w.rotation.x=Math.PI/2; w.position.y=0.04+i*0.05; g.add(w); }
+      const tip=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.02,0.02,0.03,8)),M.gold); tip.position.y=0.235; g.add(tip); return true; }
   }
   return false;
 }
@@ -3605,8 +3700,9 @@ function batteryHousingUpdate(dt){
   b.lidPivot.rotation.x=-Math.min(1,b.anim/0.9)*1.9;   // lid heaves open
   if(b.anim>0.45&&!b.sparked){ b.sparked=true; sparkBurst(b.x,b.z); AudioEngine.zap(); }
   if(b.anim>=0.9&&!b.awarded){ b.awarded=true; b.anim=0;
-    addItem('battery',2); AudioEngine.chime(); shakeCam(0.5);
-    subtitle('INDUSTRIAL CELLS RECOVERED — two High-Grade Batteries, still warm.','#ffd76a',4.5);
+    addItem('coggear',1); addItem('goldbat',1); addItem('battery',1);
+    AudioEngine.chime(); shakeCam(0.5);
+    subtitle('RECOVERED: Cognitive Gear · Golden Wire Wrapped Battery. Components for the Room Leaper.','#ffd76a',5);
   }
 }
 function artBatteryReset(){ batteryHousing=null; }
@@ -3643,9 +3739,10 @@ const SCP_CARD=[
  ['NEUTRALIZED','#8a939c','Neutralized rooms no longer exhibit anomalous environmental behavior — either destroyed, collapsed, or rendered inactive.'],
  ['ARCHON','#e0b84a','Archon-class rooms could theoretically be contained, but containment is harmful or counterproductive. These rooms are integrated into reality in a way that makes interference dangerous.'],
  ['APOLLYON','#ff2438','Apollyon-class rooms are uncontainable, unstable, and pose catastrophic environmental threats. Often associated with large-scale or world-ending scenarios.'],
+ ['NEZER','#a04ae8','Nezer-class rooms are recurring unauthorized architectural anomalies. Stabilization is possible but resource-prohibitive; power draw and hardware degradation exceed any operational benefit. Rooms alternate without warning between a Dormant State and a Chaotic State, and cannot be removed once formed. Avoid. Limit exposure. Report changes immediately.'],
 ];
 function artScpCardTexture(){
-  const W=512,H=768,[c,x]=_cvWH(W,H);
+  const W=512,H=900,[c,x]=_cvWH(W,H);
   // laminated card: off-white, thin border, punched header
   x.fillStyle='#e8e4d6'; x.fillRect(0,0,W,H);
   x.strokeStyle='#8a8578'; x.lineWidth=6; x.strokeRect(8,8,W-16,H-16);
@@ -3672,6 +3769,564 @@ function artScpCardTexture(){
   sheen.addColorStop(0.7,'rgba(255,255,255,0.07)'); sheen.addColorStop(1,'rgba(255,255,255,0)');
   x.fillStyle=sheen; x.fillRect(0,0,W,H);
   const t=new THREE.CanvasTexture(c); t.anisotropy=8; disposables.push(t); return t;
+}
+
+// ============================================================================
+// NEZER MODULE — Nezer Room Class containment, Nezer-01-A, freight safety
+// door, Room Leaper, floor-variant entities, inventory overhaul support.
+// Tone contract: deadpan SCP. The original Nezer Room Class description is
+// reproduced VERBATIM below and must never be altered.
+// ============================================================================
+
+// ---- ORIGINAL NEZER ROOM CLASS DESCRIPTION (verbatim, do not edit) --------
+const NEZER_CLASS_FULL=`Nezer Rooms are a recurring architectural anomaly that appear without authorization and persist regardless of intervention. While not inherently difficult to stabilize, they require a disproportionate amount of resources to keep operationally safe. Their presence is considered harmful to personnel, infrastructure, and long-term facility stability. Nezer Rooms routinely generate chaotic environmental conditions. These include unpredictable spatial shifts, intermittent gravity fluctuations, spontaneous electrical discharge, product drift, and personnel disorientation. The rooms do not remain stable for long periods and may transition into hazardous states without warning. Although Nezer Rooms can be maintained with standard equipment, doing so is extremely costly. They consume power at rates significantly higher than other room classes, require constant monitoring, and degrade containment hardware faster than expected. The financial and material burden of maintaining a Nezer Room outweighs any operational benefit. Nezer Rooms alternate between two states: Dormant State, where distortions are mild and manageable, and Chaotic State, where instability increases rapidly and harm becomes likely. Chaotic states occur unpredictably and may last anywhere from seconds to hours. Nezer Rooms cannot be removed once formed. They can be stabilized temporarily but not eliminated. Long-term containment is possible but not recommended due to excessive cost and ongoing risk. Personnel should avoid Nezer Rooms whenever possible. If traversal is required, limit exposure time and ensure monitoring equipment is active. Report any changes in room behavior immediately. Consider decommissioning adjacent areas if Nezer activity increases.`;
+
+// ---- NEZER ROOM STATE ------------------------------------------------------
+let nezer=null;   // {room:{x0,z0,w,d,cx,cz,state,stateT}, ent:{...}, glass:{...}}
+function nezerReset(){ nezer=null; }
+
+// black-site materials, built per room (disposed with the floor)
+function _nezerMats(){
+  const M={
+    tile:new THREE.MeshStandardMaterial({color:0x0b0b0d,roughness:0.35,metalness:0.2,envMapIntensity:0.5}),
+    frame:new THREE.MeshStandardMaterial({map:TX.metal,color:0x141418,roughness:0.5,metalness:0.8}),
+    glass:new THREE.MeshStandardMaterial({color:0x05070a,roughness:0.05,metalness:0.3,
+      transparent:true,opacity:0.42,envMapIntensity:1.2}),
+    vent:new THREE.MeshStandardMaterial({color:0x08080a,roughness:0.8}),
+    fog:new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.16,depthWrite:false}),
+    skin:new THREE.MeshStandardMaterial({color:0xcbb8b0,roughness:0.55}),
+    dark:new THREE.MeshStandardMaterial({color:0x0a0a0c,roughness:0.7}),
+    crack:new THREE.MeshBasicMaterial({color:0xb8c4cc,transparent:true,opacity:0,side:THREE.DoubleSide}),
+  };
+  Object.values(M).forEach(m=>disposables.push(m));
+  return M;
+}
+
+// ---- NEZER-01-A entity model (matches provided reference) ------------------
+// Elongated tapering limbs (black to pale), narrow pale torso with a dark
+// smudge, tangled black hair, small blank white face with a fixed smile.
+function artNezerEntity(M){
+  const g=new THREE.Group();
+  const limb=(x0,y0,z0,len,r0,r1,rotZ,mat)=>{
+    const m=new THREE.Mesh(geo(new THREE.CylinderGeometry(r0,r1,len,8)),mat);
+    m.position.set(x0,y0,z0); m.rotation.z=rotZ||0; g.add(m); return m; };
+  // legs: pale thigh tapering into long black spike shins
+  limb(-0.14,1.55,0,0.9,0.055,0.075,0,M.skin); limb(0.14,1.55,0,0.9,0.055,0.075,0,M.skin);
+  limb(-0.16,0.55,0,1.3,0.012,0.05,0.06,M.dark); limb(0.16,0.55,0,1.3,0.012,0.05,-0.06,M.dark);
+  // pelvis: jagged dark mass
+  g.add(_box(0.3,0.22,0.2,M.dark,0,2.05,0));
+  for(let i=0;i<4;i++){ const j=_box(0.07,0.16,0.06,M.dark,-0.12+i*0.08,2.16,0.08); j.rotation.z=(i%2?0.4:-0.4); g.add(j); }
+  // narrow pale torso with dark smudge
+  const torso=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.16,0.1,0.75,10)),M.skin);
+  torso.position.y=2.55; g.add(torso);
+  const smudge=_box(0.26,0.3,0.06,M.dark,0,2.5,0.12); smudge.rotation.z=0.2; g.add(smudge);
+  // arms: pale upper tapering into long black spike forearms, held rigid
+  limb(-0.28,2.65,0,0.7,0.035,0.05,0.12,M.skin); limb(0.28,2.65,0,0.7,0.035,0.05,-0.12,M.skin);
+  limb(-0.36,1.75,0,1.25,0.01,0.04,0.1,M.dark);  limb(0.36,1.75,0,1.25,0.01,0.04,-0.1,M.dark);
+  // long dark neck, small pale face
+  limb(0,3.1,0,0.45,0.05,0.06,0,M.dark);
+  const head=new THREE.Mesh(geo(new THREE.SphereGeometry(0.14,10,8)),M.skin);
+  head.scale.set(0.85,1.15,0.9); head.position.y=3.45; g.add(head);
+  // fixed face: two dark nostril-dots and the smile
+  const fc=document.createElement('canvas'); fc.width=fc.height=64;
+  const fx=fc.getContext('2d'); fx.fillStyle='#e8ded8'; fx.fillRect(0,0,64,64);
+  fx.fillStyle='#141414'; fx.beginPath(); fx.arc(26,26,2.6,0,7); fx.arc(38,26,2.6,0,7); fx.fill();
+  fx.strokeStyle='#141414'; fx.lineWidth=2.4; fx.beginPath(); fx.arc(32,36,9,0.25,Math.PI-0.25); fx.stroke();
+  const ft=new THREE.CanvasTexture(fc); disposables.push(ft);
+  const face=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.2,0.22)),
+    new THREE.MeshBasicMaterial({map:ft,side:THREE.DoubleSide}));
+  disposables.push(face.material);
+  face.position.set(0,3.46,0.125); g.add(face);
+  // tangled black hair: chaotic thin strands
+  const hairMat=new THREE.MeshBasicMaterial({color:0x050505}); disposables.push(hairMat);
+  for(let i=0;i<14;i++){
+    const s=new THREE.Mesh(geo(new THREE.TorusGeometry(0.1+Math.random()*0.1,0.008,4,10,Math.PI*(0.8+Math.random()))),hairMat);
+    s.position.set((Math.random()-0.5)*0.22,3.5+(Math.random()-0.3)*0.25,(Math.random()-0.5)*0.2);
+    s.rotation.set(Math.random()*3,Math.random()*3,Math.random()*3); g.add(s);
+  }
+  g.userData.head=head;
+  return g;
+}
+
+// ---- NEZER CONTAINMENT ROOM builder ---------------------------------------
+// Square black-tile chamber, black fog, ceiling vents, containment frame,
+// central reinforced black glass enclosure holding Nezer-01-A.
+function buildNezerRoom(rng){
+  // placement: mid-floor quadrant away from the service rooms
+  const w=14,d=14;
+  const x0=18+((rng()*(GRID_W-40))|0), z0=16+((rng()*(GRID_D-34))|0);
+  for(let x=x0;x<x0+w;x++)for(let z=z0;z<z0+d;z++){
+    if(x===x0||x===x0+w-1||z===z0||z===z0+d-1)grid[gi(x,z)]=G_WALL;
+    else grid[gi(x,z)]=G_WALK;   // clear any shelving that generated inside
+  }
+  grid[gi(x0+(w>>1),z0)]=G_WALK; grid[gi(x0+(w>>1)+1,z0)]=G_WALK;   // doorway
+  // evict what the store already built inside the footprint — shelving,
+  // crates, loot, fixtures. The room replaces them wholesale. Architecture
+  // (floor/ceiling/water, all origin-centered and huge) is size-guarded.
+  const [wxa,wza]=cellToWorld(x0,z0), [wxb,wzb]=cellToWorld(x0+w-1,z0+d-1);
+  const rx0=Math.min(wxa,wxb)-0.5,rx1=Math.max(wxa,wxb)+0.5,rz0=Math.min(wza,wzb)-0.5,rz1=Math.max(wza,wzb)+0.5;
+  const inR=(x,z)=>x>=rx0&&x<=rx1&&z>=rz0&&z<=rz1;
+  const keep=new Set();
+  enemies.forEach(e=>['mesh','g','group','detail','root'].forEach(k=>e[k]&&keep.add(e[k])));
+  const tp=new THREE.Vector3(),tq=new THREE.Quaternion(),ts=new THREE.Vector3(),tm=new THREE.Matrix4();
+  [...world.children].forEach(o=>{
+    if(o.isInstancedMesh){
+      let dirty=false;
+      for(let i=0;i<o.count;i++){ o.getMatrixAt(i,tm); tm.decompose(tp,tq,ts);
+        if(inR(tp.x,tp.z)){ ts.set(0,0,0); tm.compose(tp,tq,ts); o.setMatrixAt(i,tm); dirty=true; } }
+      if(dirty)o.instanceMatrix.needsUpdate=true;
+    } else if(!keep.has(o)&&inR(o.position.x,o.position.z)&&o.position.y<CFG.wallH+0.5){
+      if(o.isMesh&&o.geometry){
+        if(!o.geometry.boundingSphere)o.geometry.computeBoundingSphere();
+        if(o.geometry.boundingSphere.radius>9)return;   // architecture stays
+        world.remove(o);
+      } else if(o.isGroup){
+        const bb=new THREE.Box3().setFromObject(o), sz=bb.getSize(new THREE.Vector3());
+        if(Math.max(sz.x,sz.z)>9)return;
+        world.remove(o);
+      }
+    }
+  });
+  for(let i=pickups.length-1;i>=0;i--){ const p=pickups[i];
+    if(inR(p.x,p.z)){ p.taken=true; p.mesh&&world.remove(p.mesh); pickups.splice(i,1); } }
+  for(let i=barricades.length-1;i>=0;i--){ const bb=barricades[i];
+    if(!bb.isSafetyDoor&&inR(bb.x,bb.z)){ bb.mesh&&world.remove(bb.mesh); barricades.splice(i,1); } }
+  for(let i=interactables.length-1;i>=0;i--){ const it=interactables[i];
+    if(typeof it.x==='number'&&inR(it.x,it.z))interactables.splice(i,1); }
+  const [cx,cz]=cellToWorld(x0+(w>>1),z0+(d>>1));
+  const M=_nezerMats();
+  // own wall meshes (this room forms AFTER the floor's instanced wall pass —
+  // consistent with a structure that appears without authorization)
+  const wallGeoN=geo(new THREE.BoxGeometry(1,CFG.wallH,1));
+  for(let x=x0;x<x0+w;x++)for(let z=z0;z<z0+d;z++){
+    if(grid[gi(x,z)]!==G_WALL)continue;
+    if(x!==x0&&x!==x0+w-1&&z!==z0&&z!==z0+d-1)continue;
+    const [wx,wz]=cellToWorld(x,z);
+    const m=new THREE.Mesh(wallGeoN,M.frame); m.position.set(wx,CFG.wallH/2,wz); world.add(m);
+  }
+  // black tile floor + ceiling sheet
+  const fl=new THREE.Mesh(geo(new THREE.PlaneGeometry(w-1.6,d-1.6)),M.tile);
+  fl.rotation.x=-Math.PI/2; fl.position.set(cx,0.03,cz); world.add(fl);
+  const ce=new THREE.Mesh(geo(new THREE.PlaneGeometry(w-1.6,d-1.6)),M.tile);
+  ce.rotation.x=Math.PI/2; ce.position.set(cx,CFG.wallH-0.02,cz); world.add(ce);
+  // black ceiling vents
+  for(const [ox,oz] of [[-3,-3],[3,-3],[-3,3],[3,3]]){
+    const v=_box(1.2,0.1,1.2,M.vent,cx+ox,CFG.wallH-0.1,cz+oz); world.add(v); }
+  // hanging black fog volume
+  const fog=new THREE.Mesh(geo(new THREE.BoxGeometry(w-2,CFG.wallH-0.6,d-2)),M.fog);
+  fog.position.set(cx,CFG.wallH/2,cz); world.add(fog);
+  // containment frame: four corner columns + top rails
+  for(const [ox,oz] of [[-2.2,-2.2],[2.2,-2.2],[-2.2,2.2],[2.2,2.2]])
+    world.add(_box(0.3,3.4,0.3,M.frame,cx+ox,1.7,cz+oz));
+  world.add(_box(4.7,0.22,0.22,M.frame,cx,3.4,cz-2.2));
+  world.add(_box(4.7,0.22,0.22,M.frame,cx,3.4,cz+2.2));
+  world.add(_box(0.22,0.22,4.7,M.frame,cx-2.2,3.4,cz));
+  world.add(_box(0.22,0.22,4.7,M.frame,cx+2.2,3.4,cz));
+  // reinforced black glass enclosure (four panes + lid)
+  const panes=[];
+  const mk=(sx,sz,px,pz,ry)=>{ const p=new THREE.Mesh(geo(new THREE.BoxGeometry(sx,3.2,sz)),M.glass);
+    p.position.set(cx+px,1.6,cz+pz); world.add(p); panes.push(p); };
+  mk(4.2,0.12,0,-2.05,0); mk(4.2,0.12,0,2.05,0); mk(0.12,4.2,-2.05,0,0); mk(0.12,4.2,2.05,0,0);
+  const lid=_box(4.3,0.12,4.3,M.glass,cx,3.26,cz); world.add(lid);
+  // stress-fracture overlays (revealed in stages)
+  const crackTex=(()=>{ const c=document.createElement('canvas'); c.width=c.height=128;
+    const x=c.getContext('2d'); x.strokeStyle='#dfe8ee'; x.lineWidth=1.4;
+    for(let i=0;i<9;i++){ x.beginPath(); let px=64,py=64; x.moveTo(px,py);
+      for(let s=0;s<5;s++){ px+=(Math.random()-0.5)*44; py+=(Math.random()-0.5)*44; x.lineTo(px,py);} x.stroke(); }
+    const t=new THREE.CanvasTexture(c); disposables.push(t); return t; })();
+  M.crack.map=crackTex;
+  const cracks=[];
+  panes.slice(0,4).forEach(p=>{ const cr=new THREE.Mesh(geo(new THREE.PlaneGeometry(3.9,3)),M.crack);
+    cr.position.copy(p.position); cr.position.z+= (Math.abs(p.geometry.parameters.width-4.2)<0.01)?0:(p.position.z>cz?0.08:-0.08);
+    cr.position.x+= (Math.abs(p.geometry.parameters.depth-4.2)<0.01)?0:(p.position.x>cx?0.08:-0.08);
+    cr.rotation.y=(Math.abs(p.geometry.parameters.width-4.2)>0.01)?Math.PI/2:0;
+    world.add(cr); cracks.push(cr); });
+  // enclosure cells are solid until breach
+  const cells=[];
+  for(let x=-2;x<=2;x++)for(let z=-2;z<=2;z++){
+    const [gx2,gz2]=worldToCell(cx+x,cz+z);
+    if(grid[gi(gx2,gz2)]===G_WALK&&Math.max(Math.abs(x),Math.abs(z))>=2){} // walls only around rim
+  }
+  for(const [ox,oz] of [[-2,-2],[-2,-1],[-2,0],[-2,1],[-2,2],[2,-2],[2,-1],[2,0],[2,1],[2,2],[-1,-2],[0,-2],[1,-2],[-1,2],[0,2],[1,2]]){
+    const [gx2,gz2]=worldToCell(cx+ox,cz+oz); grid[gi(gx2,gz2)]=G_PROPS; cells.push([gx2,gz2]);
+  }
+  // the entity
+  const entG=artNezerEntity(M); entG.position.set(cx,0,cz); world.add(entG);
+  // documentation on the outer frame: full ORIGINAL class text, unaltered
+  let readDoc=false;
+  interactables.push({x:cx-2.6,z:cz-2.6,r:2,dur:0.8,prompt:'',
+    getPrompt:()=>'Read Containment Documentation [hold E]',canUse:()=>true,
+    onDone:()=>{ readDoc=true;
+      el('noteTitle').textContent='ROOM CLASS: NEZER — REFERENCE DOCUMENT';
+      el('noteBody').textContent=NEZER_CLASS_FULL;
+      el('noteOverlay').style.display='flex'; game.paused=true;
+      AudioEngine.staticBurst(0.3,0.03); }});
+  nezer={
+    room:{x0,z0,w,d,cx,cz,state:'DORMANT',stateT:20+rng()*40},
+    ent:{g:entG,x:cx,z:cz,active:false,vibT:0,freed:false},
+    glass:{hp:100,taps:0,tapT:0,cracks,panes,lid,cells,broken:false},
+    agitation:0,watchT:0,sparkT:0,
+  };
+  subtitle('This room does not appear on the floor plan.','#a04ae8',4);
+}
+
+// crowbar tap on the glass — called from the melee hook
+function nezerTapCheck(){
+  if(!nezer||nezer.glass.broken)return false;
+  const g=nezer.glass, e=nezer.ent;
+  if(dist2d(player.x,player.z,e.x,e.z)>3.4)return false;
+  g.taps++; g.tapT=game.time;
+  AudioEngine.click(1400,0.2); AudioEngine.clank&&AudioEngine.clank();
+  nezer.agitation+=14;
+  if(g.taps===3)subtitle('The smile has not moved. Something behind it has.','#a04ae8',3);
+  if(g.taps>=6){ g.hp-=18; nezerFracture(); }
+  if(g.hp<=0)nezerBreach();
+  return true;
+}
+function nezerFracture(){
+  const g=nezer.glass;
+  const stage=g.hp>60?0.25:g.hp>30?0.55:0.9;
+  g.cracks.forEach(c=>c.material.opacity=stage);
+  AudioEngine.shot(0.25,0); shakeCam(0.5);
+  subtitle('Stress fracture. The enclosure is rated for less than you think.','#ff9a5a',3);
+}
+function nezerActivate(why){
+  if(!nezer||nezer.ent.active||nezer.ent.freed)return;
+  nezer.ent.active=true;
+  subtitle('NEZER-01-A: ACTIVE PHASE. Vacate the chamber.','#ff2438',4);
+  AudioEngine.screech(4); AudioEngine.staticBurst(1.2,0.12); shakeCam(1);
+}
+function nezerBreach(){
+  const g=nezer.glass; if(g.broken)return;
+  g.broken=true;
+  g.panes.forEach(p=>p.visible=false); g.lid.visible=false;
+  g.cracks.forEach(c=>c.visible=false);
+  g.cells.forEach(([gx2,gz2])=>{ grid[gi(gx2,gz2)]=G_WALK; });
+  nezer.ent.active=true; nezer.ent.freed=true;
+  AudioEngine.shot(0.6,0); AudioEngine.screech(2); shakeCam(1.6);
+  subtitle('CONTAINMENT BREACH. Nezer-01-A is loose. Contact is fatal.','#ff2438',5);
+}
+
+// per-frame Nezer logic
+function nezerUpdate(dt){
+  if(!nezer)return;
+  const r=nezer.room, e=nezer.ent, g=nezer.glass;
+  // room state machine: Dormant <-> Chaotic, unpredictable
+  r.stateT-=dt;
+  if(r.stateT<=0){
+    r.state=r.state==='DORMANT'?'CHAOTIC':'DORMANT';
+    r.stateT=r.state==='CHAOTIC'?(6+Math.random()*20):(15+Math.random()*45);
+    if(r.state==='CHAOTIC'){
+      nezer.agitation+=20;
+      if(dist2d(player.x,player.z,r.cx,r.cz)<12)
+        subtitle('Nezer instability spike. Limit exposure time.','#a04ae8',3);
+      // instability can override the freight safety door
+      if(safetyDoor&&safetyDoor.p<0.5&&Math.random()<0.2){ safetyDoor.target=1;
+        subtitle('The safety door releases itself. Nothing authorized that.','#ff9a5a',3); }
+    }
+  }
+  const nearRoom=dist2d(player.x,player.z,r.cx,r.cz)<9;
+  // chaotic environment: discharge sparks, disorientation wobble, drift
+  if(r.state==='CHAOTIC'){
+    nezer.sparkT-=dt;
+    if(nezer.sparkT<=0){ nezer.sparkT=0.8+Math.random()*1.8;
+      sparkBurst(r.cx+(Math.random()-0.5)*8,r.cz+(Math.random()-0.5)*8);
+      if(Math.random()<0.4)AudioEngine.zap(); }
+    if(nearRoom){ shakeCam(0.12); addFear(dt*4); }
+    nezer.agitation+=dt*2;
+  }
+  if(!e.freed){
+    // provocations
+    if(nearRoom&&playerCanSee(e.x,e.z)){ nezer.watchT+=dt;      // extended observation
+      if(nezer.watchT>6){ nezer.watchT=0; nezer.agitation+=25;
+        subtitle('It is aware of the observation schedule.','#a04ae8',3); } }
+    else nezer.watchT=Math.max(0,nezer.watchT-dt*0.5);
+    for(let i=noiseEvents.length-1;i>=0;i--){ const n=noiseEvents[i];   // loud noises
+      if(game.time-n.t>0.5)break;
+      if(n.loud>=0.8&&dist2d(n.x,n.z,e.x,e.z)<16)nezer.agitation+=12; }
+    if((game.floodDepth||0)>0.3)nezer.agitation+=dt*10;                 // flood reaches chamber
+    nezer.agitation=Math.max(0,nezer.agitation-dt*1.2);
+    if(nezer.agitation>=100)nezerActivate('agitation');
+    // active-but-contained: lunging, limb distortion, vibration, breach attempts
+    if(e.active){
+      e.vibT+=dt;
+      e.g.position.set(e.x+Math.sin(e.vibT*60)*0.05,Math.abs(Math.sin(e.vibT*8))*0.15,e.z+Math.cos(e.vibT*53)*0.05);
+      e.g.scale.y=1+Math.sin(e.vibT*23)*0.08;                           // limb distortion
+      e.g.rotation.y=Math.atan2(player.x-e.x,player.z-e.z);
+      if(Math.random()<dt*0.5){ e.g.position.z+=0.3; AudioEngine.clank&&AudioEngine.clank(); } // lunge at glass
+      g.hp-=dt*6;                                                       // breach attempts
+      if(g.hp<60&&g.cracks[0].material.opacity<0.25)nezerFracture();
+      if(g.hp<30&&g.cracks[0].material.opacity<0.55)nezerFracture();
+      if(g.hp<=0)nezerBreach();
+    } else {
+      e.g.position.set(e.x,0,e.z); e.g.scale.y=1;                       // motionless. exactly.
+    }
+  } else {
+    // BREACHED: fatal aggression. It does not path. It closes.
+    const dx=player.x-e.x,dz=player.z-e.z,l=Math.hypot(dx,dz)||1;
+    e.x+=dx/l*6.2*dt; e.z+=dz/l*6.2*dt;
+    e.vibT+=dt;
+    e.g.position.set(e.x+Math.sin(e.vibT*40)*0.06,Math.abs(Math.sin(e.vibT*10))*0.2,e.z);
+    e.g.rotation.y=Math.atan2(dx,dz);
+    e.g.scale.y=1+Math.sin(e.vibT*19)*0.12;
+    addFear(dt*12);
+    if(l<1.3)die('nezer');                                              // instant death
+  }
+}
+
+// ---- FREIGHT ELEVATOR SAFETY DOOR ------------------------------------------
+let safetyDoor=null;
+function safetyDoorReset(){ safetyDoor=null; }
+function buildSafetyDoor(doorCells){
+  const M={slab:new THREE.MeshStandardMaterial({map:TX.metal,roughness:0.45,metalness:0.8,color:0x6a6f76}),
+    hazard:new THREE.MeshBasicMaterial({color:0xc9a52a})};
+  Object.values(M).forEach(m=>disposables.push(m));
+  const [ax,az]=cellToWorld(doorCells[0][0],doorCells[0][1]);
+  const [bx,bz]=cellToWorld(doorCells[1][0],doorCells[1][1]);
+  const cx=(ax+bx)/2, cz=(az+bz)/2;
+  const slab=new THREE.Mesh(geo(new THREE.BoxGeometry(0.35,CFG.wallH-0.4,2.2)),M.slab);
+  slab.position.set(cx,CFG.wallH/2-0.2,cz); world.add(slab);
+  // label texture: OPEN AT YOUR OWN RISK
+  const tex=TextureFactory.label('OPEN AT YOUR\nOWN RISK',{w:256,h:128,bg:'#7a1f14',fg:'#f2e8d8',size:34,border:'#1a1a1a',bw:8,grime:true});
+  const lab=new THREE.Mesh(geo(new THREE.PlaneGeometry(1.5,0.75)),new THREE.MeshBasicMaterial({map:tex}));
+  disposables.push(lab.material);
+  lab.position.set(cx-0.19,2.4,cz); lab.rotation.y=-Math.PI/2; world.add(lab);
+  // red hazard lights either side
+  const lampGeo=geo(new THREE.SphereGeometry(0.09,8,6));
+  const lamps=[-1.35,1.35].map(oz=>{ const l=new THREE.Mesh(lampGeo,MAT.emergency);
+    l.position.set(cx,CFG.wallH-0.8,cz+oz); world.add(l); return l; });
+  const cells=doorCells.map(([gx2,gz2])=>[gx2,gz2]);
+  safetyDoor={cx,cz,slab,lamps,cells,p:1,target:1,jammed:false,hp:400,openY:CFG.wallH/2-0.2};
+  // pseudo-barricade entries so hostiles attack a CLOSED door instead of
+  // phasing through — destroying it forces it open (and jams it there)
+  cells.forEach(([gx2,gz2])=>{ const [wx,wz]=cellToWorld(gx2,gz2);
+    barricades.push({mesh:slab,cx:gx2,cz:gz2,x:wx,z:wz,hp:0,max:0,welded:false,grabbable:false,
+      isSafetyDoor:true}); });
+  // manual lever on BOTH sides
+  [[-1.4,0],[1.4,0]].forEach(([ox,oz])=>{
+    interactables.push({x:cx+ox,z:cz+oz,r:1.8,dur:1.4,prompt:'',
+      getPrompt:()=>safetyDoor.jammed?'Safety door lever — JAMMED':
+        ('Safety Door Lever ['+(safetyDoor.target<0.5?'OPEN':'CLOSE')+'] [hold E]'),
+      canUse:()=>!safetyDoor.jammed,
+      onDone:()=>{
+        // flood events can jam the mechanism mid-throw
+        if((game.floodDepth||0)>0.3&&Math.random()<0.5){
+          safetyDoor.jammed=true; AudioEngine.clank&&AudioEngine.clank();
+          subtitle('The lever seizes. Water in the track.','#77aaff',3); return; }
+        safetyDoor.target=safetyDoor.target<0.5?1:0;
+        AudioEngine.slide&&AudioEngine.slide();
+      }});
+  });
+}
+function safetyDoorUpdate(dt){
+  const d=safetyDoor; if(!d)return;
+  // slow industrial travel
+  const dir=Math.sign(d.target-d.p);
+  if(dir!==0){
+    d.p=clamp(d.p+dir*dt*0.28,0,1);
+    d.slab.position.y=d.openY+d.p*(CFG.wallH-0.5);   // slides UP to open
+    if(Math.abs(d.p-d.target)<0.01){ d.p=d.target; AudioEngine.clank&&AudioEngine.clank(); }
+  }
+  const closed=d.p<0.15;
+  d.cells.forEach(([gx2,gz2])=>{ const cur=grid[gi(gx2,gz2)];
+    if(closed&&cur===G_WALK)grid[gi(gx2,gz2)]=G_BARR;
+    if(!closed&&cur===G_BARR)grid[gi(gx2,gz2)]=G_WALK; });
+  // wire the pseudo-barricade hp: attacked while closed
+  barricades.forEach(b=>{ if(b.isSafetyDoor){ b.welded=closed;
+    if(closed&&b.max===0){ b.hp=d.hp; b.max=400; }
+    if(closed&&b.hp<d.hp)d.hp=b.hp;
+    if(d.hp<=0&&closed){ d.target=1; d.jammed=true;
+      subtitle('The safety door gives out and jams open.','#ff6655',3); } } });
+  // hazard lights blink while moving or closed
+  const blink=(dir!==0||closed)&&Math.sin(game.time*8)>0;
+  d.lamps.forEach(l=>l.material=blink?MAT.eyes:MAT.emergency);
+}
+
+// ---- FLOOR-VARIANT EMPLOYEES ------------------------------------------------
+// Every level dresses its associates differently: silhouette, tint, gait,
+// senses, and a vocal signature. Applied on top of base type brains.
+const BIOME_VARIANTS={
+  RETAIL:       {name:'Associate',        tint:0x14315e, sy:1.0,  spd:1.0,  hear:1.0, voice:900},
+  ARMORY:       {name:'Loss Prevention',  tint:0x24344a, sy:1.05, spd:1.05, hear:1.1, voice:700},
+  COLD:         {name:'Cold Chain Handler',tint:0x9ab8d0,sy:1.0,  spd:0.9,  hear:1.0, voice:1100},
+  BACKROOMS:    {name:'Night Restocker',  tint:0x1a1a20, sy:1.1,  spd:1.1,  hear:1.2, voice:500},
+  YELLOW_HALL:  {name:'Hall Attendant',   tint:0x8a7a2a, sy:1.15, spd:0.95, hear:1.15,voice:1300},
+  EMPLOYEE_MAZE:{name:'Floor Supervisor', tint:0x2a4a8c, sy:1.05, spd:1.0,  hear:1.05,voice:800},
+  SEASONAL:     {name:'Seasonal Hire',    tint:0x6a2a2a, sy:0.95, spd:1.1,  hear:0.9, voice:1500},
+  WRONG:        {name:'Duplicate',        tint:0x3a3a3e, sy:1.0,  spd:1.0,  hear:1.0, voice:640},
+  CHECKOUTS:    {name:'Lane Operator',    tint:0x2a5a4a, sy:1.08, spd:0.92, hear:1.1, voice:1000},
+  FLOODED:      {name:'Drainage Crew',    tint:0x1f3a36, sy:0.9,  spd:1.0,  hear:1.05,voice:420},
+  LV000:        {name:'Clerical Unit',    tint:0xb8b2a0, sy:1.0,  spd:0.85, hear:0.8, voice:1200},
+  LV011:        {name:'Frost Handler',    tint:0xcfe0ea, sy:1.0,  spd:0.85, hear:0.9, voice:1600},
+  LV020:        {name:'Platform Attendant',tint:0x3a3f45,sy:1.12, spd:1.05, hear:1.15,voice:380},
+  LV045:        {name:'Boiler Tender',    tint:0x5a3a24, sy:0.92, spd:1.1,  hear:1.0, voice:300},
+  LV090:        {name:'Display Model',    tint:0x6a2fa0, sy:1.2,  spd:0.9,  hear:0.85,voice:1800},
+  LV100:        {name:'Optimization Lead',tint:0xe8eaee, sy:1.05, spd:1.0,  hear:1.0, voice:1400},
+  LV222:        {name:'Register Echo',    tint:0x2a5a4a, sy:1.0,  spd:1.05, hear:1.1, voice:950},
+  LV234:        {name:'Reflection',       tint:0x9aa8b8, sy:1.0,  spd:1.15, hear:1.0, voice:1050},
+  LV333:        {name:'Echo Staff',       tint:0x6a665e, sy:1.07, spd:1.0,  hear:1.3, voice:520},
+  LV404:        {name:'Unlisted',         tint:0x26262a, sy:1.1,  spd:1.05, hear:1.1, voice:460},
+  LV515:        {name:'Sump Worker',      tint:0x1f3a36, sy:0.9,  spd:1.0,  hear:1.0, voice:400},
+  LV666:        {name:'Display Season',   tint:0x4a1f28, sy:1.15, spd:1.1,  hear:0.95,voice:1700},
+  LV808:        {name:'Line Inspector',   tint:0x4a4038, sy:1.1,  spd:1.0,  hear:1.05,voice:340},
+  LV12245:      {name:'Operator',         tint:0x6a6a5a, sy:1.05, spd:0.95, hear:0.95,voice:760},
+  LV2000:       {name:'Submerged Staff',  tint:0x2a4a6a, sy:0.92, spd:1.0,  hear:1.0, voice:440},
+};
+function applyBiomeVariant(e){
+  const v=BIOME_VARIANTS[game.biome]; if(!v||!e.detail)return;
+  e.variant=v;
+  e.detail.traverse(o=>{ if(o.isMesh&&o.material===MAT.vest){
+    if(!e._vmat){ e._vmat=MAT.vest.clone(); e._vmat.color.setHex(v.tint); disposables.push(e._vmat); }
+    o.material=e._vmat; } });
+  e.detail.scale.y*=v.sy;
+  e.speedMul=v.spd*(1+((game.chaosLevel||0)*0.04));   // Room Leaper feeds aggression
+  e.hearMul=v.hear;
+  e.callT=4+Math.random()*14;
+}
+// occasional per-variant vocalization: a short tonal call unique to the floor
+function variantVoiceUpdate(e,dt){
+  if(!e.variant||e.dead)return;
+  e.callT-=dt;
+  if(e.callT<=0){ e.callT=10+Math.random()*22;
+    if(dist2d(e.x,e.z,player.x,player.z)<20&&AudioEngine.ready){
+      const t=AudioEngine.ctx.currentTime;
+      const o=AudioEngine.ctx.createOscillator(),gg=AudioEngine.ctx.createGain();
+      o.type='triangle'; o.frequency.setValueAtTime(e.variant.voice,t);
+      o.frequency.exponentialRampToValueAtTime(e.variant.voice*0.7,t+0.4);
+      gg.gain.setValueAtTime(0.0001,t); gg.gain.linearRampToValueAtTime(0.05,t+0.05);
+      gg.gain.exponentialRampToValueAtTime(0.0001,t+0.5);
+      o.connect(gg).connect(AudioEngine.master); o.start(t); o.stop(t+0.55);
+    } }
+}
+
+// ---- ROOM LEAPER: floor preview data ---------------------------------------
+function floorPreviewInfo(biome){
+  const m=LEVEL_META[biome]||{clazz:'PENDING'};
+  const risk={SAFE:1,'TICONDEROGA':1,'ARCHON-SAFE':2,EUCLID:2,'EUCLID → KETER':3,KETER:4,APOLLYON:5}[m.clazz]||2;
+  const flood=biome==='LV2000'?'WAIST':biome==='LV515'?'KNEE':biome==='FLOODED'?'ANKLE':'DRY';
+  const ent=(BIOME_VARIANTS[biome]||{}).name||
+    (biome==='LVAPO'?'The Guardian of Eterness':biome==='LVAPO0'?'Guardian Echo':
+     biome==='LV777'||biome==='LV999'?'None recorded':'Unknown');
+  return {risk,flood,ent};
+}
+
+// ---- ITEM DESCRIPTIONS (inventory preview pane) ----------------------------
+const ITEM_DESC={
+  bolts:'Loose zinc hardware. The shelves shed them like teeth.',
+  powder:'Gunpowder in retail packaging. The label says "seasonal".',
+  pipe:'Salvaged steel pipe. Load-bearing until it wasn\'t.',
+  handle:'A wooden display handle. Fits a human hand. Fit one before.',
+  wires:'Common copper wiring, stripped from something that needed it.',
+  battery:'High-grade industrial cell. Warm regardless of charge.',
+  cloth:'Rags. Absorbent. Ask nothing about the stains.',
+  shells:'Improvised shot loads. Rated for one use each, optimistically.',
+  rifleAmmo:'Military rounds. The store does not sell these. The store has them.',
+  medkit:'First-aid kit, restocked by parties unknown.',
+  molotov:'A bottle with intent.',
+  emp:'Electromagnetic charge. Employees dislike it. Fences forgive it.',
+  fence:'Deployable arc barrier. Grid-dependent unless boosted.',
+  pressure:'The Pressure Machine. Utility classification pending since 1994.',
+  shotgun:'The Pipe Shotgun. Loud enough to file its own incident report.',
+  rifle:'MK-Vault rifle, pre-modified. Silenced. Someone planned ahead.',
+  nvg:'Night vision goggles. What they show you was already there.',
+  vest:'Bulletproof vest. Melee results may vary.',
+  boots:'Combat boots. Quieter. Grippier. No refunds.',
+  converter:'Industrial-Grade Converter. Required component: Room Leaper.',
+  portgen:'Portable generator. Keeps fences honest through blackouts.',
+  plate:'Heavy barricade plating with pre-drilled bolt pattern.',
+  booster:'Battery backup kit for deployed fences.',
+  coffee:'Still warm. Always still warm. Do not investigate why.',
+  keycard:'Office keycard. Opens doors in an office that isn\'t here.',
+  wrongcard:'A keycard for a floor that is not found. The elevator disagrees.',
+  mapfrag:'A map fragment. The aisles it shows do not stay drawn.',
+  proto:'Prototype tech from Level 10^100. Strips into power cells.',
+  realitykey:'THE REALITY KEY. The Gate of Escape acknowledges exactly one.',
+  coggear:'COGNITIVE GEAR. A rotating mechanical stabilizer. It turns even when watched. Required for advanced machinery.',
+  goldbat:'GOLDEN WIRE WRAPPED BATTERY. High-capacity cell wound in gold filament. The filament hums at rest.',
+  leaper:'THE ROOM LEAPER. Installs into the elevator panel. Unlocks Floor Preview Mode. Each use raises the Chaos Level. Use sparingly.',
+};
+
+// ---- INVENTORY SYSTEM (I) — drag & drop, craft slots, preview -------------
+// Pointer-based drag: mousedown an item tile, a ghost follows the cursor,
+// release over a craft slot to place it. ASSEMBLE matches a recipe whose
+// ingredient TYPES equal the slotted set (quantities validated from stock).
+const invUI={open:false,slots:[null,null,null,null],drag:null,sel:null};
+function inventoryItems(){
+  const ids=new Set();
+  Object.entries(inv.counts).forEach(([id,n])=>{ if(n>0)ids.add(id); });
+  Object.entries(inv.owned).forEach(([id,v])=>{ if(v&&ITEMS[id])ids.add(id); });
+  return [...ids];
+}
+function openInventory(){
+  invUI.open=true; game.paused=true;
+  document.exitPointerLock&&document.exitPointerLock();
+  renderInventory();
+  el('invOverlay').style.display='flex';
+}
+function closeInventory(){
+  invUI.open=false; el('invOverlay').style.display='none'; game.paused=false;
+}
+function renderInventory(){
+  const grid=el('invGrid'); grid.innerHTML='';
+  inventoryItems().forEach(id=>{
+    const d=document.createElement('div'); d.className='invItem'; d.dataset.id=id;
+    const n=inv.counts[id]||0;
+    d.innerHTML=`${svgIcon(id,30)}<span class="invCnt">${n||'•'}</span>`;
+    d.onmouseenter=()=>selectInvItem(id);
+    d.onmousedown=e=>startDrag(id,e);
+    grid.appendChild(d);
+  });
+  const slots=el('invSlots'); slots.innerHTML='';
+  invUI.slots.forEach((id,i)=>{
+    const s=document.createElement('div'); s.className='invSlot'+(id?' filled':''); s.dataset.slot=i;
+    s.innerHTML=id?svgIcon(id,30):'<span class="slotHint">+</span>';
+    s.onmouseup=()=>dropOnSlot(i);
+    s.onmousedown=()=>{ if(invUI.slots[i]){ invUI.slots[i]=null; renderInventory(); } };
+    slots.appendChild(s);
+  });
+  const r=matchSlotRecipe();
+  const btn=el('invAssemble');
+  btn.disabled=!r; btn.textContent=r?('ASSEMBLE: '+ITEMS[r.out].name):'ASSEMBLE';
+}
+function selectInvItem(id){
+  invUI.sel=id;
+  el('invPrevIcon').innerHTML=svgIcon(id,64);
+  el('invPrevName').textContent=ITEMS[id]?ITEMS[id].name:id;
+  el('invPrevDesc').textContent=ITEM_DESC[id]||'No documentation survives.';
+  el('invPrevCount').textContent='In stock: '+(inv.counts[id]||(inv.owned[id]?'equipped':0));
+}
+function startDrag(id,e){
+  invUI.drag=id;
+  const g=el('invDragGhost');
+  g.innerHTML=svgIcon(id,34); g.style.display='block';
+  moveGhost(e);
+}
+function moveGhost(e){
+  const g=el('invDragGhost');
+  g.style.left=(e.clientX-17)+'px'; g.style.top=(e.clientY-17)+'px';
+}
+function endDrag(){
+  invUI.drag=null; el('invDragGhost').style.display='none';
+}
+function dropOnSlot(i){
+  if(!invUI.drag)return;
+  invUI.slots[i]=invUI.drag; endDrag(); renderInventory();
+}
+function matchSlotRecipe(){
+  const set=new Set(invUI.slots.filter(Boolean));
+  if(!set.size)return null;
+  for(const r of RECIPES){
+    if(r.tier>game.craftTier)continue;
+    const keys=Object.keys(r.cost);
+    if(keys.length===set.size&&keys.every(k=>set.has(k))&&hasItems(r.cost))return r;
+  }
+  return null;
+}
+function assembleFromSlots(){
+  const r=matchSlotRecipe(); if(!r)return;
+  craft(r);
+  invUI.slots=[null,null,null,null];
+  renderInventory();
 }
 
 // ================================ SECTION 11: INTERACTION ENGINE ===========
@@ -3755,6 +4410,9 @@ function damageBarricadeAt(cx,cz,dmg){
   const b=barricades.find(b=>b.welded&&b.cx===cx&&b.cz===cz);
   if(!b)return;
   b.hp-=dmg; emitNoise(b.x,b.z,20,0.6,'barricadeHit'); AudioEngine.click(150,0.25);
+  // the freight safety door absorbs hits without scaling or being removed —
+  // safetyDoorUpdate reads the shared hp and forces it open at zero
+  if(b.isSafetyDoor)return;
   b.mesh.scale.setScalar(0.9+0.1*(b.hp/b.max));
   if(b.hp<=0){ grid[gi(cx,cz)]=G_WALK; world.remove(b.mesh);
     barricades.splice(barricades.indexOf(b),1);
@@ -4213,10 +4871,21 @@ function openElevatorMenu(){
       div.className='ebtn'+(locked?' locked':'')+(isApo?' apo':'');
       const cls=CLASS_COLORS[m.clazz]||'#8fa3b8';
       div.style.setProperty('--ebc',cls);
+      // ROOM LEAPER — Floor Preview Mode: thumbnail, danger rating, flood
+      // level, resident entity type (discovered floors only)
+      let preview='';
+      if(game.leaperInstalled&&discovered&&typeof floorPreviewInfo==='function'){
+        const info=floorPreviewInfo(b);
+        const t=(typeof BIOME_TINTS==='object'&&BIOME_TINTS&&BIOME_TINTS[b])||{wall:0x8a9199,floor:0xb0ada4};
+        const hex=n=>'#'+n.toString(16).padStart(6,'0');
+        preview=`<span class="ebPrev">`+
+          `<span class="ebThumb" style="background:linear-gradient(155deg,${hex(t.wall)},${hex(t.floor)})"></span>`+
+          `<span class="ebMeta">RISK ${'▮'.repeat(info.risk)}${'▯'.repeat(5-info.risk)} · ${info.flood}<br>${info.ent}</span></span>`;
+      }
       div.innerHTML=(locked?'<span class="ebLock">&#128274;</span>':'')+
         `<span class="ebLv">${m.lv}</span>`+
         `<span class="ebName">${locked&&!discovered&&!isApo?'UNDISCOVERED':m.name}</span>`+
-        `<span class="ebClass">${locked&&!discovered&&!isApo?'&nbsp;':m.clazz}</span>`;
+        `<span class="ebClass">${locked&&!discovered&&!isApo?'&nbsp;':m.clazz}</span>`+preview;
       if(!locked)div.onclick=()=>chooseFloor(b);
       else if(isApo)div.title='Requires the Reality Key or a Wrong-Floor Keycard';
       grid.appendChild(div);
@@ -4228,6 +4897,11 @@ function chooseFloor(biome){
   el('elevMenu').style.display='none'; game.paused=false;
   // teleport into the cabin if we opened the menu remotely
   if(elevatorInfo){ player.x=elevatorInfo.x; player.z=elevatorInfo.z; }
+  // Room Leaper usage cost: Chaos Level rises with every directed jump
+  if(biome&&game.leaperInstalled){
+    game.chaosLevel=Math.min(10,(game.chaosLevel||0)+1);
+    subtitle('Room Leaper engaged. Chaos Level '+game.chaosLevel+'. Something recalculates.','#a04ae8',3.5);
+  }
   startElevatorTransit(biome);   // null => random descent
 }
 function findElevator(){
@@ -4375,11 +5049,25 @@ function craft(r){
     subtitle('Fence boosted: battery backup installed — live through blackouts.','#66eaff',3); return;
   }
   if(r.out==='converter'){
-    game.craftTier=2; game.converterPlaced=true;
-    const [dx,dz]=aimDir(); const x=player.x+dx*2,z=player.z+dz*2;
-    const m=new THREE.Mesh(geo(new THREE.BoxGeometry(1.6,1.8,1.2)),MAT.genr); m.position.set(x,0.9,z); world.add(m);
-    subtitle('INDUSTRIAL-GRADE CONVERTER ONLINE — high-grade crafting unlocked permanently.','#ffd76a',5);
-    AudioEngine.weld(); AudioEngine.chime();
+    if(game.craftTier>=2){
+      // industrial tier already online: further converters are portable
+      // COMPONENTS (Room Leaper ingredient) instead of placed forges
+      addItem('converter',1);
+      subtitle('Industrial Converter fabricated as a component.','#ffd76a',3);
+      AudioEngine.clank&&AudioEngine.clank();
+    } else {
+      game.craftTier=2; game.converterPlaced=true;
+      const [dx,dz]=aimDir(); const x=player.x+dx*2,z=player.z+dz*2;
+      const m=new THREE.Mesh(geo(new THREE.BoxGeometry(1.6,1.8,1.2)),MAT.genr); m.position.set(x,0.9,z); world.add(m);
+      subtitle('INDUSTRIAL-GRADE CONVERTER ONLINE — high-grade crafting unlocked permanently.','#ffd76a',5);
+      AudioEngine.weld(); AudioEngine.chime();
+    }
+  } else if(r.out==='leaper'){
+    // installs directly into the elevator panel
+    game.leaperInstalled=true;
+    subtitle('ROOM LEAPER installed into the elevator panel. Floor Preview Mode online. Chaos noted.','#a04ae8',5);
+    AudioEngine.chime(); AudioEngine.staticBurst(0.6,0.06);
+    if(typeof artRefreshElevPanel==='function')artRefreshElevPanel();
   } else {
     addItem(r.out,r.n);
     if(r.out==='shotgun')subtitle('Pipe Shotgun assembled. Point away from face.','#ffd76a',3);
@@ -4398,7 +5086,8 @@ function openJournal(){
   });
 }
 function closeOverlays(){
-  ['craftOverlay','journalOverlay','noteOverlay','pauseOverlay','helpOverlay','elevMenu'].forEach(id=>el(id).style.display='none');
+  ['craftOverlay','journalOverlay','noteOverlay','pauseOverlay','helpOverlay','elevMenu','invOverlay'].forEach(id=>el(id).style.display='none');
+  if(typeof invUI!=='undefined'){ invUI.open=false; invUI.drag=null; const g=el('invDragGhost'); if(g)g.style.display='none'; }
   game.paused=false;
 }
 function setPaused(p){
@@ -4432,6 +5121,9 @@ function onKeyDown(code){
       } break;
     case 'Escape': if(anyOverlayOpen())closeOverlays(); else setPaused(!game.paused); break;
     case 'KeyH': el('helpOverlay').style.display='flex'; game.paused=true; break;
+    case 'KeyI': // inventory
+      if(typeof invUI!=='undefined'){ invUI.open?closeInventory():openInventory(); }
+      break;
     case 'KeyM': // call the elevator menu from anywhere
       if(el('elevMenu').style.display==='flex'){ el('elevMenu').style.display='none'; game.paused=false; }
       else if(!elevatorInfo||!elevatorInfo.busy)openElevatorMenu();
@@ -4439,7 +5131,7 @@ function onKeyDown(code){
   }
 }
 function craftToggle(){ el('craftOverlay').style.display==='flex'?closeOverlays():openCraft(); }
-function anyOverlayOpen(){ return ['craftOverlay','journalOverlay','noteOverlay','helpOverlay','elevMenu'].some(id=>el(id).style.display==='flex'); }
+function anyOverlayOpen(){ return ['craftOverlay','journalOverlay','noteOverlay','helpOverlay','elevMenu','invOverlay'].some(id=>el(id).style.display==='flex'); }
 function tryToggleFlashOrGrab(){ player.flashlight=!player.flashlight; AudioEngine.click(1100,0.1); }
 
 // ================================ SECTION 21: DEATH / RESTART ===============
@@ -4451,6 +5143,7 @@ function die(src){
     specter:'The blackout kept you.',fire:'Burned in your own barricade line.',cart:'Trampled by the stampede.',
     mannequin:'The mannequins finally reached you.',heat:'The air of the Everscorch took you apart.',
     steam:'Boiled alive in the backroom steam.',
+    nezer:'Nezer-01-A made contact. Contact is fatal.',
     sun:'The Sorrow Sun looked at you directly.',guardian:'Judged unworthy by the Guardian of Eterness.'};
   el('deathCause').textContent=causes[src]||'The store closed around you.';
   el('deathStats').textContent=`Floors: B${game.floor} · Days: ${game.day} · Kills: ${game.kills} · Documents: ${game.notesFound.length}/${LORE.length}`;
@@ -4474,7 +5167,7 @@ function restart(){
     power:'ON',blackoutIn:CFG.blackoutMin+Math.random()*60,vaultState:{},weather:'CLEAR',weatherClock:30,
     kills:0,craftTier:1,converterPlaced:false,paused:false,notesFound:[],
     floodStage:0,floodClock:0,floodDepth:0,baseFloodDepth:0,liminal:false,
-    apoVisited:false,lootBias:null});
+    apoVisited:false,lootBias:null,chaosLevel:0,leaperInstalled:false});
   Object.assign(player,{hp:CFG.hpMax,stamina:CFG.staminaMax,fear:0,slot:0,shotgunLoaded:2,rifleLoaded:0,
     flashlight:false,nvg:false,carrying:null,x:0,z:0,slipping:0});
   inv.counts={}; inv.owned={crowbar:true};
@@ -4517,6 +5210,8 @@ function tick(now){
     if(typeof portgenUpdate==='function')portgenUpdate(dt);
     if(typeof apoUpdate==='function')apoUpdate(dt);
     if(typeof generatorFxUpdate==='function')generatorFxUpdate(dt);
+    if(typeof nezerUpdate==='function')nezerUpdate(dt);
+    if(typeof safetyDoorUpdate==='function')safetyDoorUpdate(dt);
   }
   updateLights(dt);
   updateHUD(dt);
@@ -4569,6 +5264,9 @@ function boot(){
   document.querySelectorAll('.closeBtn').forEach(b=>b.onclick=()=>{ closeOverlays(); el('cv').requestPointerLock(); });
   el('lcClose').onclick=()=>closeLevelCard();
   el('elevClose').onclick=()=>{ closeOverlays(); el('cv').requestPointerLock(); };
+  el('invAssemble')&&(el('invAssemble').onclick=()=>{ if(typeof assembleFromSlots==='function')assembleFromSlots(); });
+  addEventListener('mousemove',e=>{ if(typeof invUI!=='undefined'&&invUI.drag)moveGhost(e); });
+  addEventListener('mouseup',()=>{ if(typeof invUI!=='undefined'&&invUI.drag)endDrag(); });
   el('elevFind').onclick=()=>{ findElevator(); el('cv').requestPointerLock(); };
   el('genFind')&&(el('genFind').onclick=()=>{ findGenerator(); el('cv').requestPointerLock(); });
   el('pauseFind') && (el('pauseFind').onclick=()=>{ findElevator(); el('cv').requestPointerLock(); });
