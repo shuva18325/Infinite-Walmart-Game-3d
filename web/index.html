@@ -30,6 +30,65 @@
   .btn:hover{background:#ffd76a;color:#10151b;}
   .controls{columns:2;font-size:0.86em;color:#9db0c0;margin-top:14px;text-align:left;}
   .controls b{color:#e8d9a8;}
+  /* ---- enhanced SCP main menu ------------------------------------------- */
+  #menuOverlay::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
+    background:radial-gradient(ellipse at 50% 42%,transparent 42%,rgba(0,0,0,0.72));
+    animation:menuVig 9s ease-in-out infinite;}
+  @keyframes menuVig{0%,100%{opacity:0.75;}50%{opacity:1;}}
+  #menuOverlay::after{content:"";position:fixed;left:0;right:0;height:34vh;top:-34vh;pointer-events:none;z-index:-1;
+    background:linear-gradient(180deg,transparent,rgba(255,215,106,0.05),transparent);
+    animation:menuSweep 11s linear infinite;}
+  @keyframes menuSweep{from{transform:translateY(0);}to{transform:translateY(160vh);}}
+  @media (prefers-reduced-motion: reduce){#menuOverlay::before,#menuOverlay::after{animation:none;}}
+  .hazardBar{height:10px;width:min(560px,86vw);margin:0 auto 16px;border-radius:2px;
+    background:repeating-linear-gradient(45deg,#e8b13a 0 14px,#161009 14px 28px);opacity:0.85;
+    box-shadow:0 0 14px rgba(232,177,58,0.25);}
+  .fileCard{position:relative;}
+  .fileMeta{font-family:'Courier New',monospace;font-size:0.66em;letter-spacing:0.18em;color:#6a7d90;
+    display:flex;justify-content:space-between;gap:12px;border-bottom:1px dashed #26313c;padding-bottom:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .fileMeta .redacted{background:#1a222c;color:#1a222c;border-radius:2px;padding:0 6px;}
+  .menuBtns{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:20px;}
+  .btn{transition:background .18s,color .18s,box-shadow .22s,transform .12s,border-color .18s;}
+  .btn:hover{box-shadow:0 0 18px rgba(255,215,106,0.35);transform:translateY(-1px);}
+  .btn:active{transform:translateY(0) scale(.98);}
+  .btn.ghost{border-color:#3a6a7a;color:#8fd0dc;}
+  .btn.ghost:hover{background:#8fd0dc;color:#0c1518;box-shadow:0 0 18px rgba(143,208,220,0.35);}
+  .btn.danger{border-color:#a04ae8;color:#c99bf0;}
+  .btn.danger:hover{background:#a04ae8;color:#100616;box-shadow:0 0 18px rgba(160,74,232,0.4);}
+  .btn:disabled{opacity:0.4;cursor:not-allowed;border-color:#3a4350;color:#6a7684;}
+  .btn:disabled:hover{background:#1a2430;box-shadow:none;transform:none;}
+  #continueBtn{position:relative;}
+  #continueBtn .contSub{display:block;font-size:0.5em;letter-spacing:0.12em;color:#7d8ea0;margin-top:3px;}
+  /* cheats panel */
+  #cheatOverlay .panel{min-width:460px;}
+  .cheatRow{display:flex;flex-direction:column;gap:2px;background:#101720;border:1px solid #2c3a48;
+    border-radius:8px;padding:10px 14px;margin:8px 0;cursor:pointer;transition:border-color .16s,background .16s;}
+  .cheatRow:hover{border-color:#a04ae8;background:#141d28;}
+  .cheatRow.on{border-color:#a04ae8;background:#170f24;box-shadow:inset 0 0 18px rgba(160,74,232,0.12);}
+  .cheatMain{display:flex;align-items:center;gap:10px;}
+  .cheatSw{font-size:1.2em;color:#5d6f80;}
+  .cheatRow.on .cheatSw{color:#c99bf0;}
+  .cheatName{color:#e8d9a8;letter-spacing:0.1em;font-size:0.95em;}
+  .cheatRow.on .cheatName{color:#d9b8f6;}
+  .cheatDesc{font-size:0.74em;color:#8195a6;padding-left:30px;}
+  /* save/restore toast + cheat watermark */
+  #saveToast{position:fixed;top:22px;left:50%;transform:translate(-50%,-16px);z-index:60;
+    font-family:'Courier New',monospace;font-size:0.82em;letter-spacing:0.22em;color:#8fe0b0;
+    background:rgba(6,14,10,0.9);border:1px solid #2d6a48;border-left:4px solid #45c07a;
+    padding:9px 20px;border-radius:4px;opacity:0;pointer-events:none;
+    box-shadow:0 6px 26px rgba(0,0,0,0.6);transition:opacity .3s,transform .3s;}
+  #saveToast.show{opacity:1;transform:translate(-50%,0);}
+  #cheatHUD{position:fixed;bottom:6px;right:10px;z-index:12;display:none;pointer-events:none;
+    font-family:'Courier New',monospace;font-size:0.62em;letter-spacing:0.16em;color:#c99bf0;
+    text-shadow:0 0 6px rgba(160,74,232,0.5);opacity:0.8;}
+  /* override / emergency animation */
+  #overrideFlash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:40;mix-blend-mode:screen;transition:opacity .07s;}
+  #overrideText{position:fixed;left:50%;top:32%;transform:translate(-50%,-50%);z-index:41;pointer-events:none;
+    font-family:'Courier New',monospace;text-align:center;display:none;}
+  #overrideText .otBig{font-size:2.4em;letter-spacing:0.16em;color:#ff2438;text-shadow:0 0 22px rgba(255,36,56,0.75);font-weight:bold;}
+  #overrideText .otSub{font-size:0.9em;letter-spacing:0.36em;color:#ff9a5a;margin-top:8px;}
+  #overrideText.warn{animation:otBlink 0.42s steps(2) infinite;}
+  @keyframes otBlink{50%{opacity:0.35;}}
   /* HUD */
   #hud{position:fixed;inset:0;pointer-events:none;z-index:10;}
   .bars{position:absolute;left:18px;bottom:18px;width:220px;}
@@ -70,6 +129,14 @@
     box-shadow:inset 0 0 180px rgba(0,60,0,0.9);}
   .scanlines{position:fixed;inset:0;pointer-events:none;z-index:30;opacity:0.35;
     background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,0.16) 2px 3px);}
+  /* cinematic color grade: soft vignette + faint cool-shadow / warm-highlight */
+  #grade{position:fixed;inset:0;pointer-events:none;z-index:8;display:none;
+    background:radial-gradient(ellipse at 50% 46%,rgba(0,0,0,0) 52%,rgba(4,6,10,0.5) 100%),
+      linear-gradient(180deg,rgba(30,26,20,0.06),rgba(6,10,18,0.14));
+    mix-blend-mode:multiply;}
+  /* smooth between-floor transition veil */
+  #fade{position:fixed;inset:0;pointer-events:none;z-index:45;background:#000;opacity:0;
+    transition:opacity .6s ease;}
   .recipe{background:#101720;border:1px solid #2c3a48;border-radius:8px;padding:10px 14px;margin:8px 0;cursor:pointer;}
   .recipe:hover{border-color:#ffd76a;}
   .recipe.locked{opacity:0.45;cursor:default;}
@@ -191,12 +258,19 @@
   <div id="hotbar"></div>
 </div>
 <div id="fearVig"></div><div id="dmg"></div><div id="nvg"></div>
+<div id="grade"></div><div id="fade"></div>
 <div class="scanlines"></div>
 
 <div id="menuOverlay" class="overlay" style="display:flex">
   <div class="scpHeader">SCP FOUNDATION ARCHIVE · ITEM #: SCP-∞MART · OBJECT CLASS: <span style="color:#f2d43a">EUCLID</span></div>
+  <div class="hazardBar"></div>
   <h1 class="flickerTitle">INFINITE WALMART<small>3D · SURVIVAL HORROR · EVERYTHING MUST GO</small></h1>
-  <div class="panel" style="margin-top:20px">
+  <div class="panel fileCard" style="margin-top:18px">
+    <div class="fileMeta">
+      <span>CLEARANCE&nbsp;<span class="redacted">LEVEL&nbsp;4</span></span>
+      <span>SITE&nbsp;██&nbsp;· RETAIL WING</span>
+      <span>STATUS&nbsp;<span style="color:#e88">CONTAINMENT&nbsp;ACTIVE</span></span>
+    </div>
     <p style="color:#9db0c0">The store opens every morning. The store closes every night.
     The employees would like you to be gone by then. There is no exit — only the freight
     elevator, and it only goes <b style="color:#ffd76a">down</b>.</p>
@@ -208,14 +282,33 @@
       <div><b>R</b> reload · <b>F</b> flashlight</div>
       <div><b>G</b> grab crate · <b>R</b> rotate · <b>R-CLICK</b> weld (carrying)</div>
       <div><b>B</b> crafting · <b>J</b> journal · <b>N</b> night vision</div>
-      <div><b>Q</b> use medkit · <b>V</b> drink coffee</div>
+      <div><b>Q</b> medkit · <b>V</b> coffee · <b>F5</b> save</div>
       <div><b>M</b> elevator menu · <b>I</b> inventory</div>
       <div><b>1–6</b> equipment · <b>H</b> help · <b>ESC</b> pause</div>
     </div>
-    <center><button class="btn" id="startBtn">CLOCK IN</button></center>
+    <div class="menuBtns">
+      <button class="btn" id="startBtn">CLOCK IN</button>
+      <button class="btn ghost" id="continueBtn" style="display:none">CONTINUE<span class="contSub"></span></button>
+      <button class="btn danger" id="cheatBtn">CHEATS</button>
+    </div>
     <p style="font-size:0.72em;color:#5d6f80;margin-bottom:0">Headphones recommended. All audio is synthesized live. Desktop + mouse required.</p>
   </div>
 </div>
+
+<div id="cheatOverlay" class="overlay">
+  <div class="panel">
+    <div class="scpHeader" style="margin-bottom:10px">RESEARCHER OVERRIDE CONSOLE · UNSANCTIONED</div>
+    <h2>CHEATS</h2>
+    <p style="color:#8195a6;font-size:0.82em;margin:2px 0 6px">Toggles persist for this session. Foundation is not liable.</p>
+    <div id="cheatList"></div>
+    <center><button class="btn closeBtn">CLOSE</button></center>
+  </div>
+</div>
+
+<div id="saveToast"></div>
+<div id="cheatHUD"></div>
+<div id="overrideFlash"></div>
+<div id="overrideText"><div class="otBig">⚠ OVERRIDE ⚠</div><div class="otSub"></div></div>
 
 <div id="invOverlay" class="overlay">
   <div class="panel">
@@ -244,8 +337,9 @@
 <div id="pauseOverlay" class="overlay">
   <div class="panel"><h2>PAUSED</h2>
   <p style="color:#9db0c0">The store waits. It's good at waiting.</p>
-  <center><button class="btn" id="resumeBtn">RESUME</button>
-  <button class="btn" id="pauseFind">FIND ELEVATOR</button></center></div>
+  <div class="menuBtns"><button class="btn" id="resumeBtn">RESUME</button>
+  <button class="btn ghost" id="pauseSave">SAVE GAME</button>
+  <button class="btn" id="pauseFind">FIND ELEVATOR</button></div></div>
 </div>
 
 <div id="craftOverlay" class="overlay">
@@ -494,6 +588,57 @@ const AudioEngine={
       s.buffer=this._noiseBuf; s.loop=true; f.type='bandpass'; f.frequency.value=800; g.gain.value=0.08;
       s.connect(f).connect(g).connect(this.master); s.start(); return{src:s,gain:g}; }); }
     else if(!on) this.stopBed('fire'); },
+  // ---- Room Leaper power states -----------------------------------------
+  leaperOn(){ if(!this.ready)return;                    // rising hum + distortion flicker
+    const t=this.ctx.currentTime;
+    // sweep up an overtone stack
+    [180,362,540].forEach((fr,i)=>{ const o=this.ctx.createOscillator(),g=this.ctx.createGain();
+      o.type=i===2?'sawtooth':'triangle'; o.frequency.setValueAtTime(fr*0.5,t);
+      o.frequency.exponentialRampToValueAtTime(fr,t+0.55);
+      this._env(g,t+i*0.05,0.05,0.09,0.7); o.connect(g).connect(this.master); o.start(t); o.stop(t+0.9); });
+    this.staticBurst(0.35,0.05);
+    // steady operating hum bed while ON
+    this.startBed('leaperhum',()=>{ const o=this.ctx.createOscillator(),g=this.ctx.createGain(),f=this.ctx.createBiquadFilter(),
+      lfo=this.ctx.createOscillator(),lg=this.ctx.createGain();
+      o.type='sawtooth'; o.frequency.value=88; f.type='lowpass'; f.frequency.value=520; g.gain.value=0;
+      lfo.type='sine'; lfo.frequency.value=6.3; lg.gain.value=22; lfo.connect(lg).connect(f.frequency); lfo.start();
+      o.connect(f).connect(g).connect(this.master); o.start(); return {src:o,gain:g,lfo}; });
+    this.setBedLevel('leaperhum',0.03); },
+  leaperOff(){ if(!this.ready)return;                   // soft shutdown click + spin-down
+    const t=this.ctx.currentTime;
+    this.stopBed('leaperhum');
+    const o=this.ctx.createOscillator(),g=this.ctx.createGain(); o.type='triangle';
+    o.frequency.setValueAtTime(520,t); o.frequency.exponentialRampToValueAtTime(70,t+0.3);
+    this._env(g,t,0.004,0.12,0.32); o.connect(g).connect(this.master); o.start(t); o.stop(t+0.4);
+    this.click(300,0.1); },
+  // ---- override / alarm / breakage --------------------------------------
+  alarmBeep(){ if(!this.ready)return;                   // harsh two-tone klaxon pip
+    const t=this.ctx.currentTime;
+    [0,0.22].forEach((off,i)=>{ const o=this.ctx.createOscillator(),g=this.ctx.createGain();
+      o.type='square'; o.frequency.value=i?720:900;
+      this._env(g,t+off,0.005,0.13,0.16); o.connect(g).connect(this.master); o.start(t+off); o.stop(t+off+0.2); }); },
+  glassShatter(){ if(!this.ready)return;                // bright cascading fracture
+    const t=this.ctx.currentTime;
+    for(let i=0;i<14;i++){ const o=this.ctx.createOscillator(),g=this.ctx.createGain();
+      o.type='triangle'; o.frequency.value=1600+Math.random()*3200;
+      const st=t+Math.random()*0.32; this._env(g,st,0.001,0.06,0.12+Math.random()*0.1);
+      o.connect(g).connect(this.master); o.start(st); o.stop(st+0.25); }
+    this.staticBurst(0.25,0.04); },
+  metalEcho(){ if(!this.ready)return;                   // banged door, ringing decay
+    const t=this.ctx.currentTime;
+    const o=this.ctx.createOscillator(),g=this.ctx.createGain(),f=this.ctx.createBiquadFilter();
+    o.type='square'; o.frequency.setValueAtTime(220,t); o.frequency.exponentialRampToValueAtTime(140,t+0.6);
+    f.type='bandpass'; f.frequency.value=380; f.Q.value=8;
+    g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.2,t+0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+1.4);
+    o.connect(f).connect(g).connect(this.master); o.start(t); o.stop(t+1.5);
+    this.clank(); },
+  confirm(){ if(!this.ready)return;                     // SCP archive confirmation blip
+    const t=this.ctx.currentTime;
+    [660,880,1320].forEach((fr,i)=>{ const o=this.ctx.createOscillator(),g=this.ctx.createGain();
+      o.type='sine'; o.frequency.value=fr; this._env(g,t+i*0.09,0.006,0.11,0.22);
+      o.connect(g).connect(this.master); o.start(t+i*0.09); o.stop(t+i*0.09+0.3); });
+    this.staticBurst(0.18,0.03); },
 };
 // Intercom voice: speechSynthesis with distorted static wrapper.
 function intercom(text,type){
@@ -526,7 +671,10 @@ function intercomWhisper(text){
 const Input={
   keys:{}, mouseDX:0, mouseDY:0, locked:false, fireHeld:false, firePressed:false, altPressed:false, rightHeld:false,
   init(canvas){
-    addEventListener('keydown',e=>{ if(e.repeat)return; this.keys[e.code]=true; onKeyDown(e.code); });
+    addEventListener('keydown',e=>{ if(e.repeat)return;
+      // F5 is quicksave in-game — stop the browser reloading the page
+      if(e.code==='F5'&&(game.state==='play'||game.state==='paused'))e.preventDefault();
+      this.keys[e.code]=true; onKeyDown(e.code); });
     addEventListener('keyup',e=>{ this.keys[e.code]=false; });
     canvas.addEventListener('mousedown',e=>{
       // The click that (re)acquires pointer lock still REGISTERS as the
@@ -566,6 +714,9 @@ const game={
   time:0, kills:0, notesFound:[], craftTier:1, converterPlaced:false,
   paused:false,
 };
+// developer cheats — toggled from the main-menu Cheats panel, read across
+// modules. Off by default; a fresh restart keeps whatever was toggled.
+const cheats={ godmode:false, infStamina:false, infAmmo:false, noclip:false, instaCraft:false };
 let scene,camera,renderer,world;           // three basics; world = per-floor group
 let grid,flowField,noiseField;             // typed arrays per floor
 let enemies=[],interactables=[],barricades=[],pickups=[],puddles=[],leaks=[],fires=[],traps=[],carts=[];
@@ -864,11 +1015,16 @@ function buildFloor(floorIdx){
   // ---- populate employees ----
   spawnPopulation(rng,floorIdx,biome);
 
+  // ---- Reality Key pillar: only in the Hyperstructure (Level 10^100) ----
+  if(biome==='LV100'&&typeof buildRealityPillar==='function')buildRealityPillar(rng);
+
   // ---- Nezer Room: appears without authorization. Chaos Level feeds it ----
-  if(typeof buildNezerRoom==='function'&&floorIdx>=2
-     &&!['LVAPO','LVAPO0','LV777','LV999'].includes(biome)
-     &&rng()<0.12+(game.chaosLevel||0)*0.06)
+  // A forced emergency descent (broken elevator panel) GUARANTEES one.
+  const nezerBiomeOk=!['LVAPO','LVAPO0','LV777','LV999'].includes(biome);
+  if(typeof buildNezerRoom==='function'&&nezerBiomeOk&&
+     (game.forceNezerFloor || (floorIdx>=2&&rng()<0.12+(game.chaosLevel||0)*0.06)))
     buildNezerRoom(rng);
+  game.forceNezerFloor=false;                          // consumed on build
 
   updateLightingMood(true);
   el('floorLabel').textContent='FLOOR B'+floorIdx+' — '+biome;
@@ -929,11 +1085,18 @@ function buildElevatorRoom(rng){
     getPrompt:()=>{
       if(elevatorInfo.busy)return '';
       if(elevatorInfo.rearm)return 'Step out of the elevator first';
+      if(game.panelBroken)return game.panelEmergency?
+        ('FORCE EMERGENCY DESCENT [hold E] — nearest containment room'):
+        ('Panel destroyed — emergency repair '+Math.ceil(game.panelRepair||0)+'s');
       if((inv.counts.leaper||0)>0&&!game.leaperInstalled)return 'Install Room Leaper [hold E]';
       return 'Elevator Panel [hold E]';
     },
-    canUse:()=>!elevatorInfo.busy&&!elevatorInfo.rearm&&game.state==='play',
+    canUse:()=>!elevatorInfo.busy&&!elevatorInfo.rearm&&game.state==='play'&&(!game.panelBroken||game.panelEmergency),
     onDone:()=>{
+      if(game.panelBroken&&game.panelEmergency){
+        if(typeof elevPanelForceDescent==='function')elevPanelForceDescent();
+        return;
+      }
       if((inv.counts.leaper||0)>0&&!game.leaperInstalled){
         if(typeof installRoomLeaper==='function')installRoomLeaper();
         return;
@@ -1268,7 +1431,7 @@ const ITEMS={
   wrongcard:{name:'Wrong-Floor Keycard',icon:''}, mapfrag:{name:'Distorted Map Fragment',icon:''},
   proto:{name:'Prototype Tech',icon:''}, realitykey:{name:'REALITY KEY',icon:''},
   coggear:{name:'Cognitive Gear',icon:''}, goldbat:{name:'Golden Wire Wrapped Battery',icon:''},
-  leaper:{name:'Room Leaper',icon:''},
+  leaper:{name:'Room Leaper',icon:''}, goldcrow:{name:'Golden Crowbar',icon:''},
 };
 const RECIPES=[
   {out:'shotgun',n:1,tier:1,cost:{bolts:4,powder:1,pipe:2,handle:1},desc:'Massive close blast. Wild spread. 2 shells, slow reload. LOUD.'},
@@ -1287,6 +1450,7 @@ const RECIPES=[
   {out:'booster',n:1,tier:2,cost:{battery:1,bolts:2},desc:'Applied on assembly: your nearest electric fence gains battery backup — live even in blackouts.'},
   {out:'battery',n:2,tier:1,cost:{proto:1},desc:'Strip a Level 10^100 prototype for its power cells.'},
   {out:'leaper',n:1,tier:2,cost:{coggear:1,goldbat:1,converter:1},desc:'THE ROOM LEAPER. Carry it to the elevator panel and interact to install it: unlocks Floor Preview Override, reaching any floor. Every directed jump raises the Chaos Level — Nezer activity and entity aggression follow.'},
+  {out:'goldcrow',n:1,tier:2,cost:{goldbat:1,pipe:2,bolts:6},desc:'THE GOLDEN CROWBAR. A reinforced, charged pry bar with a glowing gold finish. Hits harder, swings faster, and shatters reinforced glass and sealed panels ordinary steel cannot.'},
 ];
 const LORE=[
  {t:'CRUMPLED SCHEDULE',b:'Week 340. Same names. Nobody remembers being hired. Nobody remembers the doors. Dana in Produce swears the parking lot is painted on. She stopped clocking out. Then she stopped being Dana.'},
@@ -1309,7 +1473,7 @@ const LORE=[
 // inventory ------------------------------------------------------------------
 const inv={counts:{},owned:{crowbar:true}};
 function addItem(id,n=1){ inv.counts[id]=(inv.counts[id]||0)+n;
-  if(id==='shotgun'||id==='rifle'||id==='nvg'||id==='vest'||id==='boots')inv.owned[id]=true;
+  if(id==='shotgun'||id==='rifle'||id==='nvg'||id==='vest'||id==='boots'||id==='goldcrow')inv.owned[id]=true;
   if((id==='shotgun'||id==='rifle')&&!player.gunKind)player.gunKind=id;
   refreshHotbar(); }
 function hasItems(cost){ return Object.entries(cost).every(([k,v])=>(inv.counts[k]||0)>=v); }
@@ -1867,6 +2031,7 @@ function cellIsLitZone(x,z){
 
 function damagePlayer(dmg,src){
   if(game.state!=='play')return;
+  if(cheats.godmode){ player.dmgFlash=Math.max(player.dmgFlash,0.3); return; }   // GODMODE: no HP loss
   if(inv.owned.vest)dmg*=0.5;
   player.hp-=dmg; player.dmgFlash=1; addFear(10);
   AudioEngine.shot(0.2,0); shakeCam(0.7);
@@ -1922,7 +2087,8 @@ function updatePlayer(dt){
     player.noiseLevel=player.crouch?0.1:player.running?0.8:0.4;
   } else player.noiseLevel=0;
 
-  if(player.running)player.stamina=clamp(player.stamina-CFG.staminaDrain*dt,0,CFG.staminaMax);
+  if(cheats.infStamina){ player.stamina=CFG.staminaMax; player.exhausted=false; }   // INFINITE STAMINA
+  else if(player.running)player.stamina=clamp(player.stamina-CFG.staminaDrain*dt,0,CFG.staminaMax);
   else player.stamina=clamp(player.stamina+CFG.staminaRegen*(player.crouch?1.4:1)*dt,0,CFG.staminaMax);
 
   // hidden check: crouched near register lane
@@ -1944,6 +2110,7 @@ function updatePlayer(dt){
   syncCamera(dt);
 }
 function resolvePlayerCollision(){
+  if(cheats.noclip)return;                               // NOCLIP: walk through walls
   const r=0.35;
   for(const [ox,oz] of [[r,0],[-r,0],[0,r],[0,-r]]){
     const [cx,cz]=worldToCell(player.x+ox,player.z+oz);
@@ -1989,13 +2156,30 @@ function updateWeapon(dt){
   }
   const rawSlot=SLOTS[player.slot];
   const slot=rawSlot==='gun'?(activeGun()||'gun'):rawSlot;
+  if(cheats.infAmmo){                                    // INFINITE AMMO: keep mags + throwables topped
+    player.shotgunLoaded=2; player.rifleLoaded=24;
+    inv.counts.molotov=Math.max(inv.counts.molotov||0,9);
+    inv.counts.emp=Math.max(inv.counts.emp||0,9);
+    inv.counts.shells=Math.max(inv.counts.shells||0,9);
+    inv.counts.rifleAmmo=Math.max(inv.counts.rifleAmmo||0,99);
+  }
   const firing=Input.consumeFire();
   if(player.reload>0)return;
   const wantsToAct=firing||(slot==='rifle'&&Input.fireHeld&&inv.owned.rifle);
   let acted=false;
   if(slot==='crowbar'&&firing&&player.fireCd<=0){
-    player.fireCd=0.6; emitNoise(player.x,player.z,6,0.3,'swing'); AudioEngine.click(300,0.2);
-    meleeHit(2.1,30); acted=true;
+    const golden=inv.owned.goldcrow;
+    player.fireCd=golden?0.42:0.6; emitNoise(player.x,player.z,6,0.3,'swing');
+    AudioEngine.click(golden?520:300,0.2); if(golden)AudioEngine.zap&&AudioEngine.zap();
+    if(typeof artStartSwing==='function')artStartSwing();
+    const hit=meleeHit(2.1,golden?55:30);
+    if(hit&&golden){ shakeCam(0.5); sparkBurst(hit.x,hit.z); }
+    else if(!hit){
+      if(typeof nezerTapCheck==='function'&&nezerTapCheck()){}
+      else if(typeof crowbarStruckStructure==='function'&&crowbarStruckStructure()){}
+      else if(typeof realityGlassHit==='function'&&realityGlassHit()){}
+    }
+    acted=true;
   }
   if(slot==='shotgun'&&inv.owned.shotgun){
     if(firing&&player.fireCd<=0){
@@ -2020,6 +2204,12 @@ function updateWeapon(dt){
   }
   if(slot==='fence'&&firing&&(inv.counts.fence||0)>0&&player.fireCd<=0){
     player.fireCd=0.8; placeFence(); acted=true;
+  }
+  // ROOM LEAPER (slot 6): left-click toggles the device ON/OFF
+  if(slot==='leaper'&&firing&&player.fireCd<=0){
+    if(game.leaperInstalled||(inv.counts.leaper||0)>0){
+      player.fireCd=0.5; if(typeof toggleLeaperPower==='function')toggleLeaperPower(); acted=true;
+    }
   }
   // dry-fire: clicked but nothing happened (not owned / no charges / on
   // cooldown) — always give an audible + readable reason, never silence
@@ -2054,11 +2244,13 @@ function tickQuickMelee(dt){
   player.meleeCd=(player.meleeCd||0)-dt;
   if(player.pendingMeleeAt&&game.time>=player.pendingMeleeAt){
     player.pendingMeleeAt=0;
-    const hit=meleeHit(2.1,30);
+    const hit=meleeHit(2.1,inv.owned.goldcrow?55:30);
     if(hit){
       AudioEngine.clank&&AudioEngine.clank(); shakeCam(0.4);
       sparkBurst(hit.x,hit.z);                       // metallic impact spark
     } else if(typeof nezerTapCheck==='function'&&nezerTapCheck()){ /* tapped the glass. noted. */ }
+    else if(typeof crowbarStruckStructure==='function'&&crowbarStruckStructure()){ /* panel / door */ }
+    else if(typeof realityGlassHit==='function'&&realityGlassHit()){ /* reality key pillar */ }
     else AudioEngine.click(180,0.1);                 // whiff
   }
 }
@@ -2579,7 +2771,9 @@ function artUpdateViewmodel(dt,moving,running){
   if(!VM.group)return;
   const rawSlot=SLOTS[player.slot];
   const gunSlot=rawSlot==='gun'?activeGun():null;
-  const key=rawSlot==='crowbar'?'crowbar':gunSlot==='shotgun'?'shotgun':gunSlot==='rifle'?'rifle':'hand';
+  const crowKey=(inv.owned.goldcrow&&VM.models.goldcrow)?'goldcrow':'crowbar';
+  const key=rawSlot==='crowbar'?crowKey:gunSlot==='shotgun'?'shotgun':gunSlot==='rifle'?'rifle':
+            rawSlot==='leaper'?'leaper':'hand';
   Object.entries(VM.models).forEach(([k,m])=>m.visible=(k===key));
   if(VM.flashlight)VM.flashlight.visible=player.flashlight;   // handheld torch in the off-hand
   VM.recoil=Math.max(0,VM.recoil-dt*6);
@@ -2588,6 +2782,23 @@ function artUpdateViewmodel(dt,moving,running){
   const reloading=player.reload>0;
   VM.group.position.set(0.28+bx, -0.26+by+(reloading?-0.12:0), -0.55+VM.recoil*0.12);
   VM.group.rotation.set(VM.recoil*0.5, 0, reloading?Math.sin(game.time*12)*0.2:0);
+  // Room Leaper live animation: spin the emitter ring + distortion-flicker the
+  // glow while powered ON
+  if(key==='leaper'&&VM.leaperParts){
+    const p=VM.leaperParts, on=!!game.leaperPowered;
+    if(on){
+      p.ring.rotation.z+=dt*3.4; p.ringInner.rotation.z-=dt*5.2;
+      const fl=0.7+Math.sin(game.time*30)*0.15+(Math.random()<0.08?Math.random()*0.5:0);   // hum flicker
+      p.light.intensity=0.5*fl;
+      const purp=0.55+0.45*fl;
+      p.glowMat.color.setRGB(0.63*purp,0.29*purp,0.91*purp);
+      p.led.visible=Math.sin(game.time*10)>-0.3;                      // blinking status LED
+    } else { p.led.visible=true; }
+  }
+  // Golden crowbar aura pulse when idle-held
+  if(key==='goldcrow'&&VM.goldParts){
+    const s=1+Math.sin(game.time*3)*0.12; VM.goldParts.glow.color.setRGB(0.95*s,0.78*s,0.32*s);
+  }
   artTickSwing(dt);   // quick-melee / pry animation overrides slot visibility
 }
 function artRecoil(v){ VM.recoil=Math.min(1,VM.recoil+v); }
@@ -2624,7 +2835,7 @@ const ICON_COLOR={
   converter:'#ffb84a',nvg:'#3ee08a',vest:'#3d6ab0',boots:'#8a6a42',portgen:'#4caf50',plate:'#9aa4ad',
   booster:'#ffcf5a',coffee:'#a5723f',keycard:'#2f8fe0',wrongcard:'#d64545',mapfrag:'#c7b287',
   proto:'#2fc0b0',realitykey:'#e8c24a',
-  coggear:'#c8d2dc',goldbat:'#e8c24a',leaper:'#a04ae8',
+  coggear:'#c8d2dc',goldbat:'#e8c24a',leaper:'#a04ae8',goldcrow:'#f2c64a',
 };
 const K='#14161c';   // shared dark keyline
 const ICONS={
@@ -2661,13 +2872,14 @@ const ICONS={
   coggear:'<circle cx="12" cy="12" r="6" fill="none" stroke="#c8d2dc" stroke-width="2.6"/><circle cx="12" cy="12" r="2" fill="#c8d2dc"/><g stroke="#c8d2dc" stroke-width="2"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></g>',
   goldbat:'<rect x="8" y="5" width="8" height="15" rx="2" fill="#2a2622" stroke="'+K+'" stroke-width="0.5"/><rect x="10" y="3" width="4" height="2.5" fill="#e8c24a"/><path d="M8 9h8M8 12.5h8M8 16h8" stroke="#e8c24a" stroke-width="1.6"/>',
   leaper:'<rect x="4" y="4" width="7" height="7" rx="1" fill="#a04ae8" opacity="0.9"/><rect x="13" y="13" width="7" height="7" rx="1" fill="#a04ae8" opacity="0.55"/><path d="M11 8h4a3 3 0 013 3v1" stroke="#e8c24a" stroke-width="1.8" fill="none" stroke-linecap="round"/><path d="M15.4 10.6L18 12l-2.9 1.1z" fill="#e8c24a"/>',
+  goldcrow:'<path d="M6 4l3 3-7 9 2 2 9-7 3 3" stroke="#f2c64a" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 4l3 3-7 9 2 2 9-7 3 3" stroke="#fff4c8" stroke-width="0.9" fill="none" stroke-linejoin="round" opacity="0.7"/><circle cx="18.5" cy="5.5" r="1.4" fill="#fff4c8" opacity="0.85"/>',
 };
 // SIGNATURE RINGS: each tool family gets its own ring pattern around the
 // icon so it reads at a glance — hazard dashes for weapons, dots for ammo,
 // a double band for gear, a glow halo for consumables, twin gold rings for
 // quest items, plain band for raw materials.
 const RING_FAMILY={};
-['crowbar','shotgun','rifle','molotov','emp','fence'].forEach(k=>RING_FAMILY[k]='weapon');
+['crowbar','shotgun','rifle','molotov','emp','fence','goldcrow'].forEach(k=>RING_FAMILY[k]='weapon');
 ['shells','rifleAmmo'].forEach(k=>RING_FAMILY[k]='ammo');
 ['nvg','vest','boots','plate','booster','portgen'].forEach(k=>RING_FAMILY[k]='gear');
 ['medkit','coffee'].forEach(k=>RING_FAMILY[k]='consumable');
@@ -2758,6 +2970,7 @@ function artResetFloorState(){
   if(typeof artBatteryReset==='function')artBatteryReset();
   if(typeof nezerReset==='function')nezerReset();
   if(typeof safetyDoorReset==='function')safetyDoorReset();
+  if(typeof realityPillarReset==='function')realityPillarReset();
   game.baseFloodDepth=0; game.floodDepth=0; game.floodStage=0; game.floodClock=0;
   if(game.weather==='FLOOD')game.weather='DRIZZLE'; // new floor drains the flood
   AudioEngine.setBedLevel&&AudioEngine.setBedLevel('breath',0);
@@ -3422,7 +3635,41 @@ function drawElevPanel(){
   dbtn(78,true); dbtn(178,false);
   x.fillStyle='#c9ccd2'; x.font='9px Arial';
   x.fillText('DOOR OPEN',78,H-16); x.fillText('DOOR CLOSE',178,H-16);
+  // ---- crowbar damage overlay: cracks -> shatter ----
+  const dmg=(typeof game!=='undefined'&&game.panelDamage)||0;
+  const broken=(typeof game!=='undefined'&&game.panelBroken);
+  if(dmg>0||broken)drawPanelCracks(x,W,H,broken?6:dmg);
   const t=new THREE.CanvasTexture(c); t.anisotropy=8; disposables.push(t); return t;
+}
+// deterministic crack figure so redraws look consistent as damage accrues
+function drawPanelCracks(x,W,H,level){
+  const rng=mulberry32(0x5eed);
+  const crack=(sx,sy,segs,spread)=>{ x.beginPath(); x.moveTo(sx,sy); let px=sx,py=sy;
+    for(let i=0;i<segs;i++){ px+=(rng()-0.5)*spread; py+=(rng()*0.6+0.3)*spread; x.lineTo(px,py);
+      if(rng()<0.4){ x.moveTo(px,py); const bx=px+(rng()-0.5)*spread*0.7,by=py+(rng()*0.5)*spread*0.7; x.lineTo(bx,by); x.moveTo(px,py);} }
+    x.stroke(); };
+  const n=Math.min(level,3);            // 1..3 small cracks
+  x.lineWidth=1.6; x.strokeStyle='rgba(15,18,22,0.85)';
+  for(let i=0;i<n;i++)crack(50+rng()*(W-100),40+rng()*(H-140),5+i,20);
+  if(level>=4){                          // major cracks: heavier, spidered from center
+    x.lineWidth=3.2; x.strokeStyle='rgba(10,12,15,0.95)';
+    for(let a=0;a<6;a++){ x.save(); x.translate(W/2,H/2); x.rotate(a*1.05); crack(0,0,7,26); x.restore(); }
+    x.lineWidth=1; x.strokeStyle='rgba(255,255,255,0.15)';
+    for(let a=0;a<6;a++){ x.save(); x.translate(W/2,H/2); x.rotate(a*1.05+0.1); crack(0,0,6,24); x.restore(); }
+  }
+  if(level>=6){                          // shattered: dark, buckled, sparking hole
+    x.fillStyle='rgba(6,7,9,0.82)'; x.fillRect(6,6,W-12,H-12);
+    x.strokeStyle='rgba(40,44,50,0.9)'; x.lineWidth=2;
+    for(let a=0;a<14;a++){ x.save(); x.translate(W/2,H/2+40); x.rotate(a*0.46); crack(0,0,8,34); x.restore(); }
+    // exposed wiring + red fault glow
+    const gGrad=x.createRadialGradient(W/2,H/2+40,4,W/2,H/2+40,90);
+    gGrad.addColorStop(0,'rgba(255,40,56,0.5)'); gGrad.addColorStop(1,'rgba(255,40,56,0)');
+    x.fillStyle=gGrad; x.beginPath(); x.arc(W/2,H/2+40,90,0,7); x.fill();
+    ['#e0503f','#e0913f','#33ff66'].forEach((col,i)=>{ x.strokeStyle=col; x.lineWidth=2.4;
+      x.beginPath(); x.moveTo(W/2-40+i*30,H/2-10); x.quadraticCurveTo(W/2+i*10,H/2+70,W/2-30+i*34,H/2+120); x.stroke(); });
+    x.fillStyle='#ff8a3d'; x.font='bold 22px "Courier New",monospace'; x.textAlign='center';
+    x.fillText('◈ FAULT ◈',W/2,40);
+  }
 }
 function artRefreshElevPanel(){
   if(!elevatorInfo||!elevatorInfo.panelMesh)return;
@@ -3577,6 +3824,86 @@ function artUpgradeViewmodels(){
       f.rotation.x=0.4; VM.models.crowbar.add(f); }
     VM.models.crowbar.add(_box(0.024,0.02,0.05,skin,-0.01,-0.01,0.15)); // palm wrap
   }
+  artBuildLeaperViewmodel();
+  artBuildGoldenCrowbarViewmodel();
+}
+// ---------- ROOM LEAPER handheld device (slot 6) ----------
+// A boxy field unit held in both hands: brushed chassis, a small readout
+// screen, glowing circuitry traces, a spinning emitter ring on top, and a
+// status LED. It powers ON/OFF (left-click) with an animated glow + flicker.
+function artBuildLeaperViewmodel(){
+  const g=new THREE.Group();
+  const chassisMat=new THREE.MeshStandardMaterial({map:TX.metal,roughness:0.4,metalness:0.75,color:0x2a2f38}); disposables.push(chassisMat);
+  const trimMat=new THREE.MeshStandardMaterial({map:TX.metal,roughness:0.3,metalness:0.9,color:0x565c66}); disposables.push(trimMat);
+  // glowing purple circuitry / screen material (shared so power-toggle hits all)
+  const glowMat=new THREE.MeshBasicMaterial({color:0xa04ae8}); disposables.push(glowMat);
+  const goldGlow=new THREE.MeshBasicMaterial({color:0xe8c24a}); disposables.push(goldGlow);
+  // chassis body
+  g.add(_box(0.16,0.1,0.22,chassisMat,0,0,-0.02));
+  g.add(_box(0.17,0.03,0.23,trimMat,0,-0.055,-0.02));            // base plate
+  g.add(_box(0.02,0.09,0.2,trimMat,0.088,0,-0.02));              // side rail R
+  g.add(_box(0.02,0.09,0.2,trimMat,-0.088,0,-0.02));             // side rail L
+  // readout screen (front-facing toward player, angled up)
+  const screen=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.11,0.06)),glowMat.clone());
+  screen.material=glowMat; screen.position.set(0,0.04,0.06); screen.rotation.x=-0.5; g.add(screen);
+  const screenFrame=_box(0.13,0.005,0.08,trimMat,0,0.037,0.055); screenFrame.rotation.x=-0.5; g.add(screenFrame);
+  // circuitry traces — thin emissive lines across the top deck
+  const traces=[];
+  const mkTrace=(x,z,l,horiz)=>{ const t=new THREE.Mesh(geo(horiz?new THREE.BoxGeometry(l,0.004,0.006):new THREE.BoxGeometry(0.006,0.004,l)),glowMat);
+    t.position.set(x,0.051,z); g.add(t); traces.push(t); return t; };
+  mkTrace(-0.03,-0.08,0.09,true); mkTrace(0.02,-0.05,0.06,false);
+  mkTrace(0.03,-0.1,0.05,true); mkTrace(-0.05,-0.06,0.05,false);
+  // emitter ring on top (spins when ON)
+  const ring=new THREE.Mesh(geo(new THREE.TorusGeometry(0.045,0.008,8,20)),goldGlow);
+  ring.position.set(0,0.075,-0.02); ring.rotation.x=Math.PI/2; g.add(ring);
+  const ringInner=new THREE.Mesh(geo(new THREE.TorusGeometry(0.024,0.005,8,16)),glowMat);
+  ringInner.position.set(0,0.07,-0.02); ringInner.rotation.x=Math.PI/2; g.add(ringInner);
+  // status LED + a little bulb light
+  const led=_box(0.014,0.014,0.014,glowMat,0.06,0.02,0.08); g.add(led);
+  const light=new THREE.PointLight(0xa04ae8,0.0,0.8,2); light.position.set(0,0.06,0.05); g.add(light);
+  // both-hands grip suggestion (thumbs on the near edge)
+  const skin=new THREE.MeshStandardMaterial({color:0xb08a6e,roughness:0.65}); disposables.push(skin);
+  g.add(_box(0.03,0.02,0.05,skin,0.07,-0.03,0.11));
+  g.add(_box(0.03,0.02,0.05,skin,-0.07,-0.03,0.11));
+  g.scale.setScalar(1.0); g.rotation.set(0.18,0,0); g.position.set(0.02,-0.08,0.02);
+  g.visible=false; VM.group.add(g); VM.models.leaper=g;
+  VM.leaperParts={screen,traces,ring,ringInner,led,light,glowMat,goldGlow};
+  artLeaperSetPower(!!game.leaperPowered);
+}
+// apply an ON/OFF power look to the leaper device (called on toggle)
+function artLeaperSetPower(on){
+  const p=VM.leaperParts; if(!p)return;
+  const c=on?0xa04ae8:0x241a30, gc=on?0xe8c24a:0x2a2418;
+  p.glowMat.color.setHex(c); p.goldGlow.color.setHex(gc);
+  p.light.intensity=on?0.6:0.0;
+}
+// ---------- GOLDEN CROWBAR viewmodel (craftable upgrade) ----------
+// The reinforced tool: mirror-gold shaft, a warm emissive aura sleeve, and a
+// small point light so it reads as "anomalous / charged" even in the dark.
+function artBuildGoldenCrowbarViewmodel(){
+  const goldMat=new THREE.MeshStandardMaterial({map:TX.metal,roughness:0.18,metalness:1.0,color:0xf2c64a,
+    emissive:0x5a3d08,emissiveIntensity:0.5}); disposables.push(goldMat);
+  const crow=new THREE.Group();
+  const shaft=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.018,0.018,0.4,10)),goldMat);
+  shaft.rotation.x=Math.PI/2; shaft.position.z=-0.06; crow.add(shaft);
+  const hook=new THREE.Mesh(geo(new THREE.TorusGeometry(0.058,0.017,10,14,Math.PI*1.2)),goldMat);
+  hook.position.set(0,0.02,-0.28); hook.rotation.y=Math.PI/2; crow.add(hook);
+  const claw=_box(0.038,0.014,0.06,goldMat,0,0.078,-0.3); crow.add(claw);
+  const heel=new THREE.Mesh(geo(new THREE.TorusGeometry(0.042,0.016,10,12,Math.PI*0.8)),goldMat);
+  heel.position.set(0,0.01,0.15); heel.rotation.y=Math.PI/2; heel.rotation.z=Math.PI; crow.add(heel);
+  // glow aura: a thin additive tube around the shaft + a warm bulb
+  const glowMat=new THREE.MeshBasicMaterial({color:0xf2c64a,transparent:true,opacity:0.28,depthWrite:false}); disposables.push(glowMat);
+  const aura=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.03,0.03,0.42,10)),glowMat);
+  aura.rotation.x=Math.PI/2; aura.position.z=-0.06; crow.add(aura);
+  const bulb=new THREE.PointLight(0xffcf5a,0.7,1.4,2); bulb.position.set(0,0.02,-0.2); crow.add(bulb);
+  // grip fingers
+  const skin=new THREE.MeshStandardMaterial({color:0xb08a6e,roughness:0.65}); disposables.push(skin);
+  for(let i=0;i<3;i++){ const f=_box(0.02,0.014,0.03,skin,0.012,-0.005+i*0.013,0.14+i*0.012);
+    f.rotation.x=0.4; crow.add(f); }
+  crow.add(_box(0.024,0.02,0.05,skin,-0.01,-0.01,0.15));
+  crow.scale.setScalar(0.9); crow.rotation.set(0.55,0.3,0.3); crow.position.set(0.05,-0.05,0.08);
+  crow.visible=false; VM.group.add(crow); VM.models.goldcrow=crow;
+  VM.goldParts={glow:glowMat,bulb};
 }
 
 // ---------- EXTRA LOOT MODELS (no squares anywhere) ----------
@@ -3622,24 +3949,30 @@ function artLootModelExtra(id,g,M){
 // Right-click quick melee raises the crowbar from any slot and swings it:
 // windup -> strike arc with wrist twist -> damped recoil. A translucent
 // ghost copy trails the strike for a cheap motion-blur read.
-let swingGhost=null;
+let swingGhost=null,swingGhostFor=null;
+// which crowbar model is currently in hand (golden upgrade wins)
+function activeCrowModel(){ return (inv.owned.goldcrow&&VM.models.goldcrow)?VM.models.goldcrow:VM.models.crowbar; }
 function artStartSwing(mode){
-  if(!VM.models.crowbar)return;
-  VM.swing={t:0,dur:mode==='pry'?0.95:0.45,mode:mode||'swing'};
-  const crow=VM.models.crowbar;
+  const crow=activeCrowModel();
+  if(!crow)return;
+  // golden crowbar swings faster + harder-looking
+  const golden=crow===VM.models.goldcrow;
+  VM.swing={t:0,dur:mode==='pry'?0.95:(golden?0.34:0.45),mode:mode||'swing',golden,crow};
   if(!crow.userData.base)crow.userData.base={
     rot:crow.rotation.clone(),pos:crow.position.clone()};
+  // rebuild the ghost trail if it belongs to the other crowbar model
+  if(swingGhost&&swingGhostFor!==crow){ VM.group.remove(swingGhost); swingGhost=null; }
   if(!swingGhost){
-    swingGhost=crow.clone();
+    swingGhost=crow.clone(); swingGhostFor=crow;
     swingGhost.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone();
-      o.material.transparent=true; o.material.opacity=0.22; o.material.depthWrite=false; } });
+      o.material.transparent=true; o.material.opacity=golden?0.3:0.22; o.material.depthWrite=false; } });
     swingGhost.visible=false; VM.group.add(swingGhost);
   }
 }
 function artStartPry(){ artStartSwing('pry'); }
 function artTickSwing(dt){
   if(!VM.swing)return;
-  const crow=VM.models.crowbar, base=crow.userData.base;
+  const crow=VM.swing.crow||activeCrowModel(), base=crow&&crow.userData.base;
   if(!base){ VM.swing=null; return; }
   VM.swing.t+=dt;
   const p=Math.min(1,VM.swing.t/VM.swing.dur);
@@ -4234,16 +4567,35 @@ function variantVoiceUpdate(e,dt){
 // panel-light overload — the visible "something recalculates" moment.
 function installRoomLeaper(){
   inv.counts.leaper=Math.max(0,(inv.counts.leaper||0)-1);
-  game.leaperInstalled=true;
+  game.leaperInstalled=true; game.leaperPowered=true;
   refreshHotbar();
   subtitle('ROOM LEAPER installed. Floor Preview Override online — every level is now reachable. Chaos Level will rise with every directed jump.','#a04ae8',5.5);
   AudioEngine.chime(); AudioEngine.staticBurst(0.9,0.08); AudioEngine.zap&&AudioEngine.zap();
+  AudioEngine.leaperOn&&AudioEngine.leaperOn();
+  if(typeof artLeaperSetPower==='function')artLeaperSetPower(true);
   shakeCam(0.5);
   if(elevatorInfo){ elevatorInfo.installFx=1.6; sparkBurst(elevatorInfo.x,elevatorInfo.z); }
   if(typeof artRefreshElevPanel==='function')artRefreshElevPanel();
 }
+// left-click on slot 6 flips the device between ONLINE and STANDBY. Only while
+// ONLINE does the Floor Preview Override reach undiscovered levels.
+function toggleLeaperPower(){
+  game.leaperPowered=!game.leaperPowered;
+  if(game.leaperPowered){
+    AudioEngine.leaperOn&&AudioEngine.leaperOn();
+    subtitle('ROOM LEAPER: ONLINE. Floor override armed.','#a04ae8',2.4);
+  } else {
+    AudioEngine.leaperOff&&AudioEngine.leaperOff();
+    subtitle('ROOM LEAPER: STANDBY. Override disarmed.','#8195a6',2);
+  }
+  if(typeof artLeaperSetPower==='function')artLeaperSetPower(game.leaperPowered);
+  refreshHotbar();
+}
+// override reaches undiscovered floors only while installed AND powered on
+function leaperActive(){ return !!(game.leaperInstalled&&game.leaperPowered); }
 // per-frame: the brief purple panel-light pulse right after installation,
-// AND the recalculation flicker during any Room Leaper transit (warpFx)
+// the recalculation flicker during any Room Leaper transit (warpFx), and the
+// broken-panel emergency repair countdown
 function leaperPanelUpdate(dt){
   if(!elevatorInfo)return;
   if(elevatorInfo.installFx>0){
@@ -4255,6 +4607,209 @@ function leaperPanelUpdate(dt){
       if(elevatorInfo.panelLights)elevatorInfo.panelLights.forEach(b=>b.material.color.setHex(0x33ff66));
       if(elevatorInfo.ceilLight)elevatorInfo.ceilLight.color.setHex(0xfff2d0);
     }
+  }
+  // emergency panel-repair countdown after a break (the "wait" option)
+  if(game.panelBroken&&game.panelRepair>0){
+    game.panelRepair-=dt;
+    // sputtering red alarm lamp while broken
+    if(elevatorInfo.panelLights){ const on=Math.sin(game.time*6)>0;
+      elevatorInfo.panelLights.forEach(b=>b.material.color.setHex(on?0xff2438:0x330808)); }
+    if(game.panelRepair<=0)elevPanelRepaired();
+  }
+}
+
+// ---- ELEVATOR PANEL DAMAGE -------------------------------------------------
+// A crowbar swung inside the cabin cracks the panel. Five points of damage
+// (golden crowbar counts double) shatters it: the override goes offline and
+// the car threatens a forced descent to the nearest containment room.
+function elevPanelHit(){
+  if(!elevatorInfo||game.panelBroken)return false;
+  if(dist2d(player.x,player.z,elevatorInfo.x,elevatorInfo.z)>2.9)return false;
+  const golden=inv.owned.goldcrow;
+  game.panelDamage=(game.panelDamage||0)+(golden?2:1);
+  AudioEngine.clank&&AudioEngine.clank(); AudioEngine.metalEcho&&AudioEngine.metalEcho();
+  shakeCam(0.45); sparkBurst(elevatorInfo.x,elevatorInfo.z);
+  const d=game.panelDamage;
+  if(d>=5){ elevPanelBreak(); }
+  else {
+    subtitle(d>=4?'The panel is badly cracked — one more and it goes.':
+      'The elevator panel cracks under the crowbar.', d>=4?'#ff9a5a':'#ffd76a',2.5);
+    if(typeof artRefreshElevPanel==='function')artRefreshElevPanel();   // redraw with cracks
+  }
+  return true;
+}
+function elevPanelBreak(){
+  game.panelBroken=true; game.panelEmergency=true; game.panelRepair=42;
+  if(typeof artRefreshElevPanel==='function')artRefreshElevPanel();
+  AudioEngine.glassShatter&&AudioEngine.glassShatter();
+  AudioEngine.alarmBeep&&AudioEngine.alarmBeep(); AudioEngine.staticBurst&&AudioEngine.staticBurst(1,0.1);
+  shakeCam(1.3); addFear(30);
+  subtitle('ELEVATOR PANEL DESTROYED. Override offline. EMERGENCY: hold E on the panel to force descent to the nearest containment room — or wait for automatic repair.','#ff2438',7);
+}
+function elevPanelRepaired(){
+  game.panelBroken=false; game.panelEmergency=false; game.panelDamage=0; game.panelRepair=0;
+  if(typeof artRefreshElevPanel==='function')artRefreshElevPanel();
+  if(elevatorInfo&&elevatorInfo.panelLights)elevatorInfo.panelLights.forEach(b=>b.material.color.setHex(0x33ff66));
+  AudioEngine.chime&&AudioEngine.chime();
+  subtitle('Emergency panel repair complete. Override restored.','#8fe0b0',3.5);
+}
+// accepting the forced descent: the next floor is guaranteed to contain a
+// Nezer-class containment room
+function elevPanelForceDescent(){
+  game.panelEmergency=false;
+  game.forceNezerFloor=true;
+  AudioEngine.alarmBeep&&AudioEngine.alarmBeep(); AudioEngine.zap&&AudioEngine.zap();
+  subtitle('EMERGENCY DESCENT ACCEPTED. Destination: nearest containment room.','#ff2438',4);
+  if(typeof startElevatorTransit==='function')startElevatorTransit(null,false,true);
+}
+// ---- OVERRIDE / EMERGENCY ANIMATION ----------------------------------------
+// Lightning flashes, klaxon beeps, flickering red warning text, plus the
+// camera-shake the transit loop already applies. ~2.4s, then fades out.
+function playOverrideAnim(label){
+  const flash=el('overrideFlash'), txt=el('overrideText');
+  if(txt){ txt.style.display='block'; txt.classList.add('warn');
+    const sub=txt.querySelector('.otSub'); if(sub)sub.textContent=label||'SYSTEM OVERRIDE'; }
+  let n=0; const iv=setInterval(()=>{
+    n++;
+    if(flash){ flash.style.background=(n%2)?'#ffffff':'#ff3020'; flash.style.opacity='0.55';
+      setTimeout(()=>{ if(flash)flash.style.opacity='0'; },70); }
+    AudioEngine.alarmBeep&&AudioEngine.alarmBeep();
+    if(typeof shakeCam==='function')shakeCam(0.55);
+    if(n>=6){ clearInterval(iv);
+      if(txt){ txt.classList.remove('warn'); setTimeout(()=>{ txt.style.display='none'; },400); } }
+  },380);
+}
+// a crowbar swung next to the freight safety door just rings it (metallic echo)
+function safetyDoorBang(){
+  if(!safetyDoor)return false;
+  if(dist2d(player.x,player.z,safetyDoor.cx,safetyDoor.cz)>2.6)return false;
+  AudioEngine.metalEcho&&AudioEngine.metalEcho(); shakeCam(0.25);
+  return true;
+}
+// called from the melee code whenever a crowbar swing lands on nothing —
+// routes the swing to any nearby cabin panel or safety door
+function crowbarStruckStructure(){
+  if(typeof elevPanelHit==='function'&&elevPanelHit())return true;
+  if(typeof safetyDoorBang==='function'&&safetyDoorBang())return true;
+  return false;
+}
+
+// ============================================================================
+//  REALITY KEY PILLAR  (Level 10^100 / LV100)
+//  An illuminated glass cylinder at the heart of the Hyperstructure holding a
+//  floating golden keycard. Only the Golden Crowbar shatters the glass; the
+//  key unlocks the APO-∞ Threshold from any elevator.
+// ============================================================================
+let realityPillar=null;
+function realityPillarReset(){ realityPillar=null; }
+function buildRealityPillar(rng){
+  // clear a plaza at map center and drop the pillar there
+  const ccx=GRID_W>>1, ccz=GRID_D>>1;
+  for(let x=ccx-3;x<=ccx+3;x++)for(let z=ccz-3;z<=ccz+3;z++)
+    if(x>0&&z>0&&x<GRID_W-1&&z<GRID_D-1)grid[gi(x,z)]=G_WALK;
+  const [cx,cz]=cellToWorld(ccx,ccz);
+  const g=new THREE.Group(); g.position.set(cx,0,cz); world.add(g);
+  const steel=new THREE.MeshStandardMaterial({map:TX.metal,roughness:0.35,metalness:0.9,color:0xb8bec6}); disposables.push(steel);
+  const gold=new THREE.MeshStandardMaterial({color:0xf2c64a,roughness:0.25,metalness:1.0,emissive:0x6a4a08,emissiveIntensity:0.6}); disposables.push(gold);
+  const glassMat=new THREE.MeshStandardMaterial({color:0xbfe4ff,transparent:true,opacity:0.26,roughness:0.05,metalness:0.1,
+    side:THREE.DoubleSide,emissive:0x2a5a7a,emissiveIntensity:0.35}); disposables.push(glassMat);
+  const glowMat=new THREE.MeshBasicMaterial({color:0x9fe0ff}); disposables.push(glowMat);
+  // pedestal + cap
+  const ped=new THREE.Mesh(geo(new THREE.CylinderGeometry(1.0,1.15,0.4,24)),steel); ped.position.y=0.2; g.add(ped);
+  const goldRim=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.8,0.8,0.06,24)),gold); goldRim.position.y=0.42; g.add(goldRim);
+  const cap=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.9,0.8,0.25,24)),steel); cap.position.y=3.1; g.add(cap);
+  // the glass cylinder
+  const glass=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.72,0.72,2.5,28,1,true)),glassMat);
+  glass.position.y=1.75; g.add(glass);
+  // interior column of light
+  const light=new THREE.PointLight(0x9fe0ff,1.4,9,2); light.position.y=1.9; g.add(light);
+  const beam=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.06,0.06,2.4,8)),glowMat); beam.position.y=1.75; g.add(beam);
+  // rotating light rings at three heights + tilts
+  const rings=[];
+  [[1.2,0.55,0],[1.75,0.62,0.5],[2.3,0.5,-0.4]].forEach(([y,r,tilt],i)=>{
+    const ring=new THREE.Mesh(geo(new THREE.TorusGeometry(r,0.03,8,32)),i===1?gold:glowMat);
+    ring.position.y=y; ring.rotation.x=Math.PI/2+tilt; g.add(ring); rings.push({m:ring,spd:(i%2?-1:1)*(0.6+i*0.4),axis:i});
+  });
+  // floating golden Reality Keycard inside
+  const card=new THREE.Group();
+  const body=_box(0.46,0.30,0.03,gold,0,0,0); card.add(body);
+  const stripe=_box(0.46,0.07,0.035,new THREE.MeshBasicMaterial({color:0x3a2a08}),0,0.06,0); card.add(stripe);
+  const chip=_box(0.09,0.07,0.04,glowMat,-0.13,-0.03,0); card.add(chip);
+  card.position.y=1.75; g.add(card);
+  realityPillar={x:cx,z:cz,g,glass,glassMat,rings,card,light,beam,broken:false,cardTaken:false,shards:[],t:0};
+  // clear any loot / interactables the store scattered into the plaza so they
+  // don't collide with the pillar or its prompt
+  for(let i=pickups.length-1;i>=0;i--){ const p=pickups[i];
+    if(dist2d(p.x,p.z,cx,cz)<2.6){ p.taken=true; p.mesh&&world.remove(p.mesh); pickups.splice(i,1); } }
+  for(let i=interactables.length-1;i>=0;i--){ const it=interactables[i];
+    if(it.pickupRef&&typeof it.x==='number'&&dist2d(it.x,it.z,cx,cz)<2.6)interactables.splice(i,1); }
+  // documentation placard on the pedestal
+  interactables.push({x:cx+1.4,z:cz,r:1.8,dur:0.7,prompt:'',
+    getPrompt:()=>realityPillar&&!realityPillar.broken?'Reality Anchor — SEALED (anomalous alloy)':'',
+    canUse:()=>false,
+    onDone:()=>{}});
+  subtitle('A sealed reality anchor hums at the center of the floor. The glass is not glass.','#9fe0ff',5);
+}
+// crowbar swing near the pillar: only the Golden Crowbar breaks it
+function realityGlassHit(){
+  if(!realityPillar||realityPillar.broken)return false;
+  if(dist2d(player.x,player.z,realityPillar.x,realityPillar.z)>2.7)return false;
+  if(!inv.owned.goldcrow){
+    AudioEngine.metalEcho&&AudioEngine.metalEcho(); shakeCam(0.2);
+    subtitle('The cylinder does not even scratch. You need something anomalous to break it.','#9fe0ff',3);
+    return true;
+  }
+  breakRealityGlass();
+  return true;
+}
+function breakRealityGlass(){
+  const P=realityPillar; if(!P||P.broken)return;
+  P.broken=true;
+  P.glass.visible=false;
+  AudioEngine.glassShatter&&AudioEngine.glassShatter(); AudioEngine.chime&&AudioEngine.chime();
+  shakeCam(1.2); addFear(-10);
+  // shard burst — small glass triangles flung outward, gravity + fade
+  const shMat=P.glassMat.clone(); shMat.opacity=0.7; disposables.push(shMat);
+  for(let i=0;i<18;i++){
+    const s=new THREE.Mesh(geo(new THREE.TetrahedronGeometry(0.08+Math.random()*0.08)),shMat);
+    const a=Math.random()*Math.PI*2, sp=1.6+Math.random()*2.4;
+    s.position.set(P.x+Math.cos(a)*0.5,1.4+Math.random()*1.4,P.z+Math.sin(a)*0.5);
+    world.add(s);
+    P.shards.push({m:s,vx:Math.cos(a)*sp,vy:2+Math.random()*2.5,vz:Math.sin(a)*sp,life:1.6});
+  }
+  subtitle('The reality anchor SHATTERS. The keycard is exposed.','#f2c64a',4);
+  // reveal the takeable key
+  interactables.push({x:P.x,z:P.z,r:2,dur:0.9,prompt:'',
+    getPrompt:()=>realityPillar&&realityPillar.broken&&!realityPillar.cardTaken?'Take the REALITY KEY [hold E]':'',
+    canUse:()=>realityPillar&&realityPillar.broken&&!realityPillar.cardTaken,
+    onDone:()=>takeRealityKey()});
+}
+function takeRealityKey(){
+  const P=realityPillar; if(!P||P.cardTaken)return;
+  P.cardTaken=true; if(P.card)P.card.visible=false; if(P.light)P.light.intensity=0.3;
+  addItem('realitykey',1);
+  AudioEngine.chime&&AudioEngine.chime(); AudioEngine.confirm&&AudioEngine.confirm();
+  subtitle('REALITY KEY acquired. The Threshold — APO-∞ — is now reachable from any elevator.','#f2c64a',6);
+}
+function realityPillarUpdate(dt){
+  const P=realityPillar; if(!P)return;
+  P.t+=dt;
+  if(!P.broken){
+    P.rings.forEach(r=>{ if(r.axis===1)r.m.rotation.z+=dt*r.spd; else r.m.rotation.y+=dt*r.spd; });
+    if(P.card&&!P.cardTaken){ P.card.rotation.y+=dt*1.1; P.card.position.y=1.75+Math.sin(P.t*1.6)*0.12; }
+    if(P.light)P.light.intensity=1.2+Math.sin(P.t*4)*0.25;
+  } else {
+    // spinning rings decay; card drifts down until taken
+    P.rings.forEach(r=>{ r.m.rotation.y+=dt*r.spd*0.3; });
+    if(P.card&&!P.cardTaken){ P.card.rotation.y+=dt*2.2; P.card.position.y=1.2+Math.sin(P.t*2)*0.08; }
+  }
+  // animate shards
+  for(let i=P.shards.length-1;i>=0;i--){ const s=P.shards[i];
+    s.life-=dt; s.vy-=9.8*dt;
+    s.m.position.x+=s.vx*dt; s.m.position.y+=s.vy*dt; s.m.position.z+=s.vz*dt;
+    s.m.rotation.x+=dt*6; s.m.rotation.z+=dt*5;
+    if(s.m.position.y<0.05){ s.m.position.y=0.05; s.vy*=-0.3; s.vx*=0.6; s.vz*=0.6; }
+    if(s.life<=0){ world.remove(s.m); P.shards.splice(i,1); }
   }
 }
 
@@ -4303,6 +4858,7 @@ const ITEM_DESC={
   coggear:'COGNITIVE GEAR. A rotating mechanical stabilizer. It turns even when watched. Required for advanced machinery.',
   goldbat:'GOLDEN WIRE WRAPPED BATTERY. High-capacity cell wound in gold filament. The filament hums at rest.',
   leaper:'THE ROOM LEAPER. Bring it to the elevator panel and interact to install it. Unlocks Floor Preview Override — every floor becomes reachable. Each directed jump raises the Chaos Level. Use sparingly.',
+  goldcrow:'THE GOLDEN CROWBAR. Reforged in gold filament and something that hums. It replaces your steel bar entirely: faster, heavier, and able to shatter reinforced glass and sealed panels. The glow does not come off on your hands.',
 };
 
 // ---- INVENTORY SYSTEM (I) — drag & drop, craft slots, preview -------------
@@ -4386,6 +4942,140 @@ function assembleFromSlots(){
   craft(r);
   invUI.slots=[null,null,null,null];
   renderInventory();
+}
+
+// ============================================================================
+//  SAVE / CONTINUE  +  CHEATS
+//  Persists a compact snapshot of run state to localStorage. Continue rebuilds
+//  the exact floor (seed + biome are deterministic) and restores the player.
+// ============================================================================
+const SAVE_KEY='iw_save_v2';
+
+function hasSave(){
+  try{ return !!localStorage.getItem(SAVE_KEY); }catch(e){ return false; }
+}
+function saveMeta(){
+  try{ const s=JSON.parse(localStorage.getItem(SAVE_KEY)); if(!s)return null;
+    return {floor:s.game.floor,biome:s.game.biome,day:s.game.day,when:s.when}; }
+  catch(e){ return null; }
+}
+// Snapshot the things a run is made of: progression, crafted state, stats,
+// and the full inventory. Per-floor volatiles (fires, puddles, enemy list)
+// are intentionally NOT saved — the floor is rebuilt fresh on load.
+function saveGame(){
+  if(game.state!=='play'&&game.state!=='paused'){ subtitle('Nothing to archive yet.','#ffaa66',2); return false; }
+  const snap={
+    v:2, when:Date.now(),
+    game:{
+      floor:game.floor, day:game.day, worldSeed:game.worldSeed, biome:game.biome,
+      craftTier:game.craftTier, converterPlaced:game.converterPlaced,
+      chaosLevel:game.chaosLevel||0, leaperInstalled:!!game.leaperInstalled,
+      notesFound:(game.notesFound||[]).slice(), kills:game.kills||0,
+      apoVisited:!!game.apoVisited, discovered:Object.assign({},game.discovered||{}),
+    },
+    player:{
+      hp:player.hp, stamina:player.stamina, fear:player.fear, slot:player.slot,
+      gunKind:player.gunKind, shotgunLoaded:player.shotgunLoaded, rifleLoaded:player.rifleLoaded,
+    },
+    inv:{ counts:Object.assign({},inv.counts), owned:Object.assign({},inv.owned) },
+  };
+  try{ localStorage.setItem(SAVE_KEY,JSON.stringify(snap)); }
+  catch(e){ subtitle('Archive failed — storage unavailable.','#ff6655',3); return false; }
+  AudioEngine.confirm&&AudioEngine.confirm();
+  saveFlash('STATE ARCHIVED · B'+game.floor);
+  refreshContinueButton();
+  return true;
+}
+// Load the snapshot and reconstruct the run. Called from the main menu.
+function continueGame(){
+  let snap; try{ snap=JSON.parse(localStorage.getItem(SAVE_KEY)); }catch(e){ snap=null; }
+  if(!snap){ return false; }
+  AudioEngine.init&&AudioEngine.init(); AudioEngine.resume&&AudioEngine.resume();
+  el('menuOverlay').style.display='none';
+  // restore progression + flags (mirror restart's baseline, then overlay snapshot)
+  Object.assign(game,{state:'play',shift:'MORNING',shiftClock:0,announced:false,
+    power:'ON',blackoutIn:CFG.blackoutMin+Math.random()*60,vaultState:{},weather:'CLEAR',weatherClock:30,
+    paused:false, floodStage:0,floodClock:0,floodDepth:0,baseFloodDepth:0,liminal:false, lootBias:null});
+  Object.assign(game,{
+    floor:snap.game.floor, day:snap.game.day, worldSeed:snap.game.worldSeed,
+    craftTier:snap.game.craftTier, converterPlaced:snap.game.converterPlaced,
+    chaosLevel:snap.game.chaosLevel||0, leaperInstalled:!!snap.game.leaperInstalled,
+    leaperPowered:!!snap.game.leaperInstalled, panelDamage:0, panelBroken:false,
+    notesFound:(snap.game.notesFound||[]).slice(), kills:snap.game.kills||0,
+    apoVisited:!!snap.game.apoVisited, discovered:Object.assign({},snap.game.discovered||{}),
+  });
+  // restore inventory + player
+  inv.counts=Object.assign({},snap.inv.counts);
+  inv.owned=Object.assign({crowbar:true},snap.inv.owned);
+  Object.assign(player,{hp:snap.player.hp,stamina:snap.player.stamina,fear:snap.player.fear,
+    slot:snap.player.slot||0, gunKind:snap.player.gunKind||null,
+    shotgunLoaded:snap.player.shotgunLoaded||0, rifleLoaded:snap.player.rifleLoaded||0,
+    flashlight:false,nvg:false,carrying:null,x:0,z:0,slipping:0});
+  // rebuild the exact floor: forcing the saved biome + preserved seed reproduces
+  // the same deterministic layout
+  game.forcedBiome=snap.game.biome||null;
+  buildFloor(game.floor);
+  placePlayerAtSpawn();
+  refreshHotbar();
+  if(typeof updateLightingMood==='function')updateLightingMood(true);
+  if(typeof refreshCheatHUD==='function')refreshCheatHUD();
+  el('grade')&&(el('grade').style.display='block');
+  AudioEngine.confirm&&AudioEngine.confirm();
+  saveFlash('STATE RESTORED · B'+game.floor);
+  showLevelCard(game.biome,5);
+  el('cv').requestPointerLock();
+  return true;
+}
+// SCP archive-style confirmation banner (also serves as a subtle animation)
+let _saveToastT=null;
+function saveFlash(text){
+  const t=el('saveToast'); if(!t)return;
+  t.textContent=text;
+  t.classList.remove('show'); void t.offsetWidth; t.classList.add('show');
+  clearTimeout(_saveToastT); _saveToastT=setTimeout(()=>t.classList.remove('show'),2600);
+}
+function refreshContinueButton(){
+  const b=el('continueBtn'); if(!b)return;
+  const m=saveMeta();
+  if(m){ b.style.display=''; b.disabled=false;
+    const sub=b.querySelector('.contSub'); if(sub)sub.textContent='B'+m.floor+' · '+(LEVEL_META[m.biome]?LEVEL_META[m.biome].name:m.biome); }
+  else { b.disabled=true; const sub=b.querySelector('.contSub'); if(sub)sub.textContent='no archive found'; }
+}
+
+// ---- CHEATS ----------------------------------------------------------------
+const CHEAT_DEFS=[
+  {key:'godmode',   label:'GODMODE',          desc:'Incoming damage is nullified.'},
+  {key:'infStamina',label:'INFINITE STAMINA', desc:'Sprint without tiring.'},
+  {key:'infAmmo',   label:'INFINITE AMMO',    desc:'Magazines and throwables never empty.'},
+  {key:'noclip',    label:'NOCLIP',           desc:'Walk through walls and shelving.'},
+  {key:'instaCraft',label:'INSTANT CRAFTING', desc:'Free, instant assembly of anything.'},
+];
+function toggleCheat(key){
+  cheats[key]=!cheats[key];
+  AudioEngine.init&&AudioEngine.init(); AudioEngine.resume&&AudioEngine.resume();
+  AudioEngine.click&&AudioEngine.click(cheats[key]?1200:400,0.12);
+  renderCheats();
+  // reflect an active cheat state onto the HUD watermark
+  if(typeof refreshCheatHUD==='function')refreshCheatHUD();
+}
+function renderCheats(){
+  const list=el('cheatList'); if(!list)return;
+  list.innerHTML='';
+  CHEAT_DEFS.forEach(c=>{
+    const on=!!cheats[c.key];
+    const row=document.createElement('div'); row.className='cheatRow'+(on?' on':'');
+    row.innerHTML=`<div class="cheatMain"><span class="cheatSw">${on?'◉':'○'}</span>`+
+      `<span class="cheatName">${c.label}</span></div>`+
+      `<span class="cheatDesc">${c.desc}</span>`;
+    row.onclick=()=>toggleCheat(c.key);
+    list.appendChild(row);
+  });
+}
+function refreshCheatHUD(){
+  const w=el('cheatHUD'); if(!w)return;
+  const active=CHEAT_DEFS.filter(c=>cheats[c.key]).map(c=>c.label);
+  if(active.length){ w.style.display='block'; w.textContent='CHEATS: '+active.join(' · '); }
+  else w.style.display='none';
 }
 
 // ================================ SECTION 11: INTERACTION ENGINE ===========
@@ -4824,16 +5514,19 @@ function showLevelCard(biome,secs){
 function closeLevelCard(){ el('levelCard').style.display='none'; clearTimeout(showLevelCard._t); }
 
 // destBiome: a forced biome key, or null for the normal random descent.
-function startElevatorTransit(destBiome,warp){
+function startElevatorTransit(destBiome,warp,forced){
   if(elevatorInfo.busy)return;
   elevatorInfo.busy=true; game.state='transit';
   const px=elevatorInfo.x, pz=elevatorInfo.z;
   player.x=px; player.z=pz; cancelInteract();
   game.forcedBiome=destBiome||null;
   AudioEngine.elevator(true); AudioEngine.staticBurst(1,0.05);
+  // dramatic override animation for Room Leaper jumps and forced descents
+  if((warp||forced)&&typeof playOverrideAnim==='function')playOverrideAnim(forced?'EMERGENCY DESCENT':'ROOM LEAPER OVERRIDE');
   // announce the destination — the panel already knows where you're going
   const dest=destBiome||previewBiome(game.floor+1);
-  intercom(warp?'Room Leaper override accepted. Recalculating destination.':randPick(Math.random,[
+  intercom(forced?'Emergency protocol engaged. Descending to nearest containment.':
+    warp?'Room Leaper override accepted. Recalculating destination.':randPick(Math.random,[
     'Going down.',
     'Thank you for shopping with us. And below us.',
     'Now arriving: housewares, garden, and the dark.',
@@ -4879,8 +5572,13 @@ function startElevatorTransit(destBiome,warp){
       if(warp&&elevatorInfo.ceilLight)elevatorInfo.ceilLight.color.setHex(0xfff2d0);
       if(warp&&elevatorInfo.panelLights)elevatorInfo.panelLights.forEach(b=>b.material.color.setHex(0x33ff66));
       game.floor++;
+      // smooth transition: snap to black over the floor swap, then ease clear
+      const fd=el('fade'); if(fd){ fd.style.transition='none'; fd.style.opacity='1'; }
+      // a fresh cabin builds a fresh panel — clear any damage from the last one
+      game.panelDamage=0; game.panelBroken=false; game.panelEmergency=false; game.panelRepair=0;
       buildFloor(game.floor);
       const e=elevatorInfo; player.x=e.x; player.z=e.z;  // arrive inside new cabin
+      if(fd)requestAnimationFrame(()=>{ fd.style.transition='opacity .6s ease'; fd.style.opacity='0'; });
       if(typeof setElevScreen==='function')setElevScreen('B'+game.floor);
       // arrival: chime, then doors slide open (jam on dangerous floors)
       AudioEngine.elevator(false); AudioEngine.chime();
@@ -4920,6 +5618,9 @@ const ELEV_MENU_GROUPS=[
 function apoUnlocked(){ return (inv.counts.realitykey||0)>0||(inv.counts.wrongcard||0)>0; }
 function openElevatorMenu(){
   if(elevatorInfo&&elevatorInfo.rearm){ subtitle('Step out of the elevator first.','#8fa3b8',2); return; }
+  if(game.panelBroken){ subtitle(game.panelEmergency?
+    'Panel destroyed. Hold E to force emergency descent — or wait for repair.':
+    'Panel destroyed — emergency repair in progress.','#ff6655',3); return; }
   game.paused=true;
   document.exitPointerLock&&document.exitPointerLock();  // free the cursor for the panel
   if(typeof artRefreshElevPanel==='function')artRefreshElevPanel();  // APO button rust/glow state
@@ -4937,9 +5638,10 @@ function openElevatorMenu(){
       const m=LEVEL_META[b]||{lv:'?',name:b,clazz:'PENDING'};
       const discovered=b==='RETAIL'||(game.discovered&&game.discovered[b]);
       const isApo=b==='LVAPO';
-      // ROOM LEAPER OVERRIDE: installed, it bypasses the discovery lock on
-      // every ordinary floor (the Threshold still needs the Reality Key)
-      const override=game.leaperInstalled&&!discovered&&!isApo;
+      // ROOM LEAPER OVERRIDE: installed AND powered ON, it bypasses the
+      // discovery lock on every ordinary floor (Threshold still needs the Key)
+      const leaperOn=typeof leaperActive==='function'?leaperActive():game.leaperInstalled;
+      const override=leaperOn&&!discovered&&!isApo;
       const locked=isApo?!apoUnlocked():(!discovered&&!override);
       const div=document.createElement('div');
       div.className='ebtn'+(locked?' locked':'')+(isApo?' apo':'')+(override?' override':'');
@@ -4949,7 +5651,7 @@ function openElevatorMenu(){
       // level, resident entity type (discovered floors, or ANY floor once
       // the leaper is installed and overriding the lock)
       let preview='';
-      if(game.leaperInstalled&&(discovered||override)&&typeof floorPreviewInfo==='function'){
+      if(leaperOn&&(discovered||override)&&typeof floorPreviewInfo==='function'){
         const info=floorPreviewInfo(b);
         const t=(typeof BIOME_TINTS==='object'&&BIOME_TINTS&&BIOME_TINTS[b])||{wall:0x8a9199,floor:0xb0ada4};
         const hex=n=>'#'+n.toString(16).padStart(6,'0');
@@ -4974,7 +5676,7 @@ function chooseFloor(biome){
   if(elevatorInfo){ player.x=elevatorInfo.x; player.z=elevatorInfo.z; }
   // Room Leaper usage cost: Chaos Level rises with every directed jump
   let warp=false;
-  if(biome&&game.leaperInstalled){
+  if(biome&&(typeof leaperActive==='function'?leaperActive():game.leaperInstalled)){
     game.chaosLevel=Math.min(10,(game.chaosLevel||0)+1);
     subtitle('Room Leaper engaged. Chaos Level '+game.chaosLevel+'. Something recalculates.','#a04ae8',3.5);
     warp=true; shakeCam(0.6); AudioEngine.staticBurst(1,0.1); AudioEngine.zap&&AudioEngine.zap();
@@ -5055,7 +5757,7 @@ function refreshHotbar(){
         d.querySelector('.ico').innerHTML=svgIcon(k||'shotgun');
       }
     }
-    else if(id==='leaper')count=game.leaperInstalled?'ON':String(inv.counts.leaper||0)||'—';
+    else if(id==='leaper')count=game.leaperInstalled?(game.leaperPowered?'ON':'OFF'):(String(inv.counts.leaper||0)||'—');
     else count=String((inv.counts[id]||0)||'—');
     const cnt=d.querySelector('.cnt');
     if(cnt.textContent!==count)cnt.textContent=count;
@@ -5088,8 +5790,8 @@ function openCraft(){
   const list=el('craftList'); list.innerHTML='';
   el('craftTier').textContent=game.craftTier>=2?'INDUSTRIAL FORGE ONLINE':'Improvised bench (find the Industrial Converter parts to advance)';
   RECIPES.forEach(r=>{
-    if(r.tier>game.craftTier)return;
-    const ok=hasItems(r.cost);
+    if(r.tier>game.craftTier&&!cheats.instaCraft)return;
+    const ok=cheats.instaCraft||hasItems(r.cost);
     const li=document.createElement('div');
     li.className='recipe'+(ok?'':' locked');
     const cost=Object.entries(r.cost).map(([k,v])=>`${svgIcon(k,15)}${v}`).join(' ');
@@ -5102,6 +5804,7 @@ function openCraft(){
 let _crafting=false;
 function startCraft(r,li){
   if(_crafting)return;
+  if(cheats.instaCraft){ craft(r); AudioEngine.confirm&&AudioEngine.confirm(); openCraft(); return; }  // INSTANT CRAFTING
   _crafting=true;
   li.style.borderColor='#ffd76a';
   const p=document.createElement('p'); p.textContent='ASSEMBLING…'; p.style.color='#ffd76a'; li.appendChild(p);
@@ -5123,7 +5826,7 @@ function craft(r){
   // target-validated specials: refuse (nothing consumed) if no valid target
   if(r.out==='plate'&&!nearestWeldedBarricade(10)){ subtitle('No welded barricade within reach to reinforce.','#ffaa66',3); return; }
   if(r.out==='booster'&&!nearestTrap(10)){ subtitle('No placed fence within reach to boost.','#ffaa66',3); return; }
-  if(!consumeItems(r.cost))return;                        // fail-safe: atomic
+  if(!cheats.instaCraft&&!consumeItems(r.cost))return;    // fail-safe: atomic (instaCraft = free)
   if(r.out==='portgen'){ artPlacePortgen(); return; }
   if(r.out==='plate'){
     const b=nearestWeldedBarricade(10);
@@ -5173,7 +5876,7 @@ function openJournal(){
   });
 }
 function closeOverlays(){
-  ['craftOverlay','journalOverlay','noteOverlay','pauseOverlay','helpOverlay','elevMenu','invOverlay'].forEach(id=>el(id).style.display='none');
+  ['craftOverlay','journalOverlay','noteOverlay','pauseOverlay','helpOverlay','elevMenu','invOverlay','cheatOverlay'].forEach(id=>el(id).style.display='none');
   if(typeof invUI!=='undefined'){ invUI.open=false; invUI.drag=null; const g=el('invDragGhost'); if(g)g.style.display='none'; }
   game.paused=false;
 }
@@ -5224,6 +5927,7 @@ function onKeyDown(code){
       if(el('elevMenu').style.display==='flex'){ el('elevMenu').style.display='none'; game.paused=false; }
       else if(!elevatorInfo||!elevatorInfo.busy)openElevatorMenu();
       break;
+    case 'F5': if(typeof saveGame==='function')saveGame(); break;   // quicksave
   }
 }
 function craftToggle(){ el('craftOverlay').style.display==='flex'?closeOverlays():openCraft(); }
@@ -5263,7 +5967,8 @@ function restart(){
     power:'ON',blackoutIn:CFG.blackoutMin+Math.random()*60,vaultState:{},weather:'CLEAR',weatherClock:30,
     kills:0,craftTier:1,converterPlaced:false,paused:false,notesFound:[],
     floodStage:0,floodClock:0,floodDepth:0,baseFloodDepth:0,liminal:false,
-    apoVisited:false,lootBias:null,chaosLevel:0,leaperInstalled:false});
+    apoVisited:false,lootBias:null,chaosLevel:0,leaperInstalled:false,leaperPowered:false,
+    panelDamage:0,panelBroken:false});
   Object.assign(player,{hp:CFG.hpMax,stamina:CFG.staminaMax,fear:0,slot:0,shotgunLoaded:2,rifleLoaded:0,
     flashlight:false,nvg:false,carrying:null,x:0,z:0,slipping:0,gunKind:null});
   inv.counts={}; inv.owned={crowbar:true};
@@ -5271,6 +5976,8 @@ function restart(){
   game.worldSeed=(Math.random()*1e9)|0;
   buildFloor(1);
   placePlayerAtSpawn();
+  if(typeof refreshCheatHUD==='function')refreshCheatHUD();
+  el('grade')&&(el('grade').style.display='block');   // cinematic color grade on
   showLevelCard('RETAIL',7);
 }
 function placePlayerAtSpawn(){
@@ -5309,6 +6016,7 @@ function tick(now){
     if(typeof nezerUpdate==='function')nezerUpdate(dt);
     if(typeof safetyDoorUpdate==='function')safetyDoorUpdate(dt);
     if(typeof leaperPanelUpdate==='function')leaperPanelUpdate(dt);
+    if(typeof realityPillarUpdate==='function')realityPillarUpdate(dt);
   }
   updateLights(dt);
   updateHUD(dt);
@@ -5358,7 +6066,16 @@ function boot(){
   el('restartBtn').onclick=()=>{ restart(); el('cv').requestPointerLock(); };
   el('winRestartBtn').onclick=()=>{ restart(); el('cv').requestPointerLock(); };
   el('resumeBtn').onclick=()=>{ setPaused(false); el('cv').requestPointerLock(); };
-  document.querySelectorAll('.closeBtn').forEach(b=>b.onclick=()=>{ closeOverlays(); el('cv').requestPointerLock(); });
+  document.querySelectorAll('.closeBtn').forEach(b=>b.onclick=()=>{ closeOverlays(); if(game.state==='play'||game.state==='paused')el('cv').requestPointerLock(); });
+  // SAVE / CONTINUE / CHEATS wiring
+  el('continueBtn')&&(el('continueBtn').onclick=()=>{ if(typeof continueGame==='function')continueGame(); });
+  el('cheatBtn')&&(el('cheatBtn').onclick=()=>{ AudioEngine.init(); AudioEngine.resume();
+    if(typeof renderCheats==='function')renderCheats(); el('cheatOverlay').style.display='flex'; });
+  el('pauseSave')&&(el('pauseSave').onclick=()=>{ if(typeof saveGame==='function')saveGame(); });
+  if(typeof refreshContinueButton==='function')refreshContinueButton();
+  if(typeof renderCheats==='function')renderCheats();
+  // menu ambient hum on first interaction (audio needs a user gesture)
+  el('menuOverlay').addEventListener('pointerdown',()=>{ AudioEngine.init(); AudioEngine.resume(); AudioEngine.humLevel&&AudioEngine.humLevel(0.03); },{once:true});
   el('lcClose').onclick=()=>closeLevelCard();
   el('elevClose').onclick=()=>{ closeOverlays(); el('cv').requestPointerLock(); };
   el('invAssemble')&&(el('invAssemble').onclick=()=>{ if(typeof assembleFromSlots==='function')assembleFromSlots(); });
