@@ -6,7 +6,22 @@
   .overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;
     background:rgba(2,3,5,0.88);z-index:50;text-align:center;}
   .panel{background:#0b0e12;border:1px solid #2c3540;border-radius:10px;padding:28px 36px;max-width:640px;
-    max-height:80vh;overflow-y:auto;box-shadow:0 0 60px rgba(0,0,0,0.9);text-align:left;}
+    max-height:80vh;overflow-y:auto;box-shadow:0 0 60px rgba(0,0,0,0.9);text-align:left;
+    animation:panelIn .32s cubic-bezier(.2,.8,.25,1);}
+  @keyframes panelIn{from{opacity:0;transform:translateY(14px) scale(0.985);}to{opacity:1;transform:none;}}
+  @media (prefers-reduced-motion: reduce){.panel{animation:none;}}
+  /* main menu: SCP file chrome + slow-drifting hazard stripes + title flicker */
+  #menuOverlay{background:
+    repeating-linear-gradient(115deg,rgba(255,215,106,0.022) 0 26px,transparent 26px 80px),
+    radial-gradient(ellipse at 50% 30%,rgba(20,26,34,0.9),rgba(2,3,5,0.97));
+    background-size:260px 260px,cover;
+    animation:menuDrift 26s linear infinite;}
+  @keyframes menuDrift{from{background-position:0 0,0 0;}to{background-position:260px 118px,0 0;}}
+  .scpHeader{font-family:'Courier New',monospace;font-size:0.72em;letter-spacing:0.3em;color:#5d7088;
+    border:1px solid #26313c;border-radius:4px;padding:6px 18px;margin-bottom:14px;background:rgba(8,11,15,0.7);}
+  .flickerTitle{animation:titleFlick 7s infinite;}
+  @keyframes titleFlick{0%,93%,96%,100%{opacity:1;}94%{opacity:0.55;}95%{opacity:0.9;}}
+  @media (prefers-reduced-motion: reduce){#menuOverlay,.flickerTitle{animation:none;}}
   h1{font-size:2.1em;letter-spacing:0.14em;color:#ffd76a;margin:0 0 4px;text-shadow:0 0 24px rgba(255,180,60,0.35);}
   h1 small{display:block;font-size:0.38em;color:#8fa3b8;letter-spacing:0.35em;margin-top:6px;}
   h2{color:#ffd76a;letter-spacing:0.08em;margin-top:0;}
@@ -148,7 +163,8 @@
 <div class="scanlines"></div>
 
 <div id="menuOverlay" class="overlay" style="display:flex">
-  <h1>INFINITE WALMART<small>3D · SURVIVAL HORROR · EVERYTHING MUST GO</small></h1>
+  <div class="scpHeader">SCP FOUNDATION ARCHIVE · ITEM #: SCP-∞MART · OBJECT CLASS: <span style="color:#f2d43a">EUCLID</span></div>
+  <h1 class="flickerTitle">INFINITE WALMART<small>3D · SURVIVAL HORROR · EVERYTHING MUST GO</small></h1>
   <div class="panel" style="margin-top:20px">
     <p style="color:#9db0c0">The store opens every morning. The store closes every night.
     The employees would like you to be gone by then. There is no exit — only the freight
@@ -156,10 +172,10 @@
     <div class="controls">
       <div><b>WASD</b> move · <b>SHIFT</b> sprint</div>
       <div><b>◄ ►</b> turn left / right · <b>CTRL/C</b> crouch</div>
-      <div><b>CLICK</b> attack/fire</div>
+      <div><b>CLICK</b> fire · <b>R-CLICK</b> crowbar swing</div>
       <div><b>E</b> hold to loot / use</div>
       <div><b>R</b> reload · <b>F</b> flashlight</div>
-      <div><b>G</b> grab crate · <b>R</b> rotate · <b>R-CLICK</b> weld</div>
+      <div><b>G</b> grab crate · <b>R</b> rotate · <b>R-CLICK</b> weld (carrying)</div>
       <div><b>B</b> crafting · <b>J</b> journal · <b>N</b> night vision</div>
       <div><b>Q</b> use medkit · <b>V</b> drink coffee</div>
       <div><b>M</b> elevator menu (choose floor)</div>
@@ -381,6 +397,19 @@ const AudioEngine={
     const s=this.ctx.createBufferSource(),g=this.ctx.createGain();
     s.buffer=this._noiseBuf; s.loop=true; this._env(g,t,0.02,vol,len);
     s.connect(g).connect(this.master); s.start(t); s.stop(t+len+0.1); },
+  slide(){ if(!this.ready)return; const t=this.ctx.currentTime;   // elevator door glide
+    const s=this.ctx.createBufferSource(),g=this.ctx.createGain(),f=this.ctx.createBiquadFilter();
+    s.buffer=this._noiseBuf; s.loop=true; f.type='bandpass'; f.frequency.setValueAtTime(300,t);
+    f.frequency.linearRampToValueAtTime(150,t+0.7);
+    g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.08,t+0.1);
+    g.gain.linearRampToValueAtTime(0.0001,t+0.75);
+    s.connect(f).connect(g).connect(this.master); s.start(t); s.stop(t+0.8); },
+  creak(){ if(!this.ready)return; const t=this.ctx.currentTime;   // metal pried open
+    const o=this.ctx.createOscillator(),g=this.ctx.createGain(),f=this.ctx.createBiquadFilter();
+    o.type='sawtooth'; o.frequency.setValueAtTime(160,t);
+    o.frequency.linearRampToValueAtTime(90,t+0.5); o.frequency.linearRampToValueAtTime(210,t+0.8);
+    f.type='bandpass'; f.frequency.value=400; f.Q.value=3;
+    this._env(g,t,0.06,0.16,0.85); o.connect(f).connect(g).connect(this.master); o.start(t); o.stop(t+1); },
   clank(){ if(!this.ready)return; const t=this.ctx.currentTime;
     for(let i=0;i<3;i++){ const o=this.ctx.createOscillator(),g=this.ctx.createGain();
       o.type='square'; o.frequency.value=180+Math.random()*400;
@@ -665,6 +694,16 @@ function applyBiomeTint(biome){
   MAT.floor.color.setHex(t.floor);
   MAT.ceil.color=new THREE.Color(t.ceil);
   game.fogColorHex=t.fog;
+  // per-level LIGHT signature: ambient hue + intensity multiplier, so every
+  // level's air has its own color even before props load in
+  const light={
+    LV011:[0x9ac8e0,1.1], LV045:[0xff9a6a,0.85], LV090:[0xb08aff,0.9],
+    LV666:[0xd07a7a,0.8], LV999:[0xffd9a0,1.25], LV020:[0x7aa0b8,0.85],
+    YELLOW_HALL:[0xe8d88a,0.95], FLOODED:[0x9ab8b0,0.9], LV2000:[0x8ab0d8,0.95],
+    SEASONAL:[0xc8a0a8,0.9], LV333:[0xb8b0a0,0.88], LV100:[0xffffff,1.2],
+    EMPLOYEE_MAZE:[0x9ab0d8,0.95], LV777:[0xffd9a0,1.2], COLD:[0xa8cce0,1.0],
+  }[biome]||[0xbfc4cc,1];
+  game.ambTintHex=light[0]; game.ambMul=light[1];
 }
 
 function buildFloor(floorIdx){
@@ -814,6 +853,11 @@ function buildElevatorRoom(rng){
         const lamp=new THREE.Mesh(geo(new THREE.BoxGeometry(1,0.1,1)),MAT.fixtureOn); lamp.position.set(0,3.9,0); cab.add(lamp);
         cab.position.set(cx,0,cz); world.add(cab); return {cab,doorL:doors,doorR:null,lamp,screen:null,panelLights:[]}; })();
   elevatorInfo={x:cx,z:cz,busy:false,...built};
+  // worn hazard sign on the wall outside the elevator room door
+  if(typeof artHazardSign==='function'){
+    const [sx,sz]=cellToWorld(x0,z0+2);
+    artHazardSign(sx-0.55,sz,-Math.PI/2);
+  }
   // interacting opens the elevator MENU (manual floor selection) instead of
   // an immediate ride
   interactables.push({x:cx,z:cz,r:2.4,dur:0.6,prompt:'Elevator Panel [hold E]',
@@ -1294,7 +1338,10 @@ class Enemy{
   hostile(){
     if(this.passive)return false;                          // Workers, Ghosts: never
     if(this.provokedOnly&&!this.provoked)return false;     // Warehouse Operators: only if you started it
-    return game.shift==='NIGHT'||this.type==='crawler'||this.type==='specter';
+    // Crawlers keep store hours now: neutral wanderers by day, hunters at
+    // night or in a blackout (their dark). Provoke one and it remembers.
+    if(this.type==='crawler')return game.shift==='NIGHT'||game.power==='OFF'||this.provoked;
+    return game.shift==='NIGHT'||this.type==='specter';
   }
   hearing(){ let h=this.def().hearing; if(game.weather==='STORM')h*=0.8; if(game.power==='OFF')h*=1.25; return h; }
   canSeePlayer(){
@@ -1451,6 +1498,15 @@ class Enemy{
     if(this.detail&&this.detail.visible&&this.detail.userData.armR){
       const sw=Math.sin(this.animT*speed*2.4)*0.5*(speed>0.3?1:0);
       this.detail.userData.armR.rotation.x=sw; this.detail.userData.armL.rotation.x=-sw;
+    }
+    // crawler gait: diagonal limb pairs stride in anti-phase, body low-sways
+    if(this.detail&&this.detail.visible&&this.detail.userData.limbs){
+      const L=this.detail.userData.limbs;
+      const gait=this.animT*Math.max(speed,0.4)*3.2;
+      const amp=speed>0.3?0.7:0.12;                 // idle = uneasy little shifts
+      L[0].rotation.x=Math.sin(gait)*amp;      L[3].rotation.x=Math.sin(gait)*amp;
+      L[1].rotation.x=Math.sin(gait+Math.PI)*amp; L[2].rotation.x=Math.sin(gait+Math.PI)*amp;
+      this.detail.rotation.z=Math.sin(gait)*0.06;   // low body sway
     }
   }
   // --- brains ---
@@ -1733,10 +1789,8 @@ function updatePlayer(dt){
 
   const f=(Input.keys.KeyW?1:0)-(Input.keys.KeyS?1:0);
   const s=(Input.keys.KeyA?1:0)-(Input.keys.KeyD?1:0);
-  // right mouse button crouches too (easier than reaching for Ctrl/C);
-  // it also fires the weld pulse when carrying an object — the two never
-  // conflict since weld only triggers while player.carrying is set
-  player.crouch=!!(Input.keys.ControlLeft||Input.keys.KeyC||Input.rightHeld);
+  // crouch lives on Ctrl / C (right-click is the melee swing now)
+  player.crouch=!!(Input.keys.ControlLeft||Input.keys.KeyC);
   const wantRun=!!Input.keys.ShiftLeft&&f>0&&!player.crouch;
   if(player.stamina<=1)player.exhausted=true;
   if(player.stamina>30)player.exhausted=false;
@@ -1832,6 +1886,12 @@ function syncCamera(dt){
 // just silently eats the click.
 function updateWeapon(dt){
   player.fireCd-=dt; player.reload-=dt;
+  tickQuickMelee(dt);
+  // right-click: weld pulse while carrying, otherwise a crowbar quick-swing
+  if(Input.consumeAlt()){
+    if(player.carrying)player.weldRequest=true;
+    else tryQuickMelee();
+  }
   const slot=SLOTS[player.slot];
   const firing=Input.consumeFire();
   if(player.reload>0)return;
@@ -1876,11 +1936,33 @@ function updateWeapon(dt){
 }
 function aimDir(){ return [Math.sin(player.yaw)*Math.cos(player.pitch), Math.cos(player.yaw)*Math.cos(player.pitch)]; }
 function meleeHit(range,dmg){
-  const [dx,dz]=aimDir();
   for(const e of enemies){ if(e.dead)continue;
     if(dist2d(e.x,e.z,player.x,player.z)<range&&losClear(player.x,player.z,e.x,e.z)){
       const ang=Math.atan2(e.x-player.x,e.z-player.z);
-      if(Math.abs(((ang-player.yaw+Math.PI*3)%(Math.PI*2))-Math.PI)<0.8){ e.hurt(dmg); return; } } }
+      if(Math.abs(((ang-player.yaw+Math.PI*3)%(Math.PI*2))-Math.PI)<0.8){ e.hurt(dmg); return e; } } }
+  return null;
+}
+// RIGHT-CLICK QUICK MELEE: swings the crowbar from ANY slot. Damage lands
+// mid-swing (matched to the viewmodel arc); a connected hit sparks, clanks,
+// and kicks the camera.
+function tryQuickMelee(){
+  if((player.meleeCd||0)>0||player.reload>0)return;
+  player.meleeCd=0.6;
+  player.pendingMeleeAt=game.time+0.16;
+  if(typeof artStartSwing==='function')artStartSwing();
+  emitNoise(player.x,player.z,6,0.3,'swing');
+  AudioEngine.click(260,0.14);                       // whoosh-ish windup tick
+}
+function tickQuickMelee(dt){
+  player.meleeCd=(player.meleeCd||0)-dt;
+  if(player.pendingMeleeAt&&game.time>=player.pendingMeleeAt){
+    player.pendingMeleeAt=0;
+    const hit=meleeHit(2.1,30);
+    if(hit){
+      AudioEngine.clank&&AudioEngine.clank(); shakeCam(0.4);
+      sparkBurst(hit.x,hit.z);                       // metallic impact spark
+    } else AudioEngine.click(180,0.1);               // whiff
+  }
 }
 function hitscan(spreadRad,dmg,maxRange){
   const yaw=player.yaw+(Math.random()-0.5)*spreadRad;
@@ -2272,6 +2354,24 @@ function artCartMesh(){
 function _box(w,h,d,mat,x,y,z){ const m=new THREE.Mesh(geo(new THREE.BoxGeometry(w,h,d)),mat); m.position.set(x,y,z); return m; }
 function artHumanoid(type,def){
   const g=new THREE.Group(); const H=def.h;
+  // CRAWLER: a proper quadruped build — elongated low body, spine ridge,
+  // four articulated limbs (animated in Enemy.animate), head slung forward.
+  if(type==='crawler'){
+    const hide=new THREE.MeshStandardMaterial({map:TX.rust,roughness:0.85,metalness:0.05,color:0x7a6a5c}); disposables.push(hide);
+    const body=_box(0.5,0.32,1.15,hide,0,0.42,0); g.add(body);
+    for(let i=0;i<4;i++){ const ridge=_box(0.1,0.09,0.12,MAT.pants,0,0.62,-0.4+i*0.27); g.add(ridge); }
+    const head=_box(0.3,0.24,0.34,MAT.skin,0,0.42,0.72); g.add(head); g.userData.head=head;
+    // torn uniform scrap still clinging to the back — it WAS an employee
+    g.add(_box(0.46,0.05,0.5,MAT.vest,0,0.6,-0.2));
+    const limbs=[]; const limbGeo=geo(new THREE.BoxGeometry(0.11,0.5,0.13));
+    [[-0.26,0.42],[0.26,0.42],[-0.26,-0.42],[0.26,-0.42]].forEach(([lx,lz])=>{
+      const pivot=new THREE.Group(); pivot.position.set(lx,0.45,lz);
+      const limb=new THREE.Mesh(limbGeo,MAT.skin); limb.position.y=-0.25; pivot.add(limb);
+      g.add(pivot); limbs.push(pivot); });
+    g.userData.limbs=limbs;
+    g.userData.type=type;
+    return g;
+  }
   // THE FACELESS: no uniform, no tag, no face, no eyes. Just a person-shape.
   const faceless=type==='faceless';
   const uniform=faceless?MAT.pants:type==='manager'?MAT.suit:MAT.vest;
@@ -2383,6 +2483,7 @@ function artUpdateViewmodel(dt,moving,running){
   const reloading=player.reload>0;
   VM.group.position.set(0.28+bx, -0.26+by+(reloading?-0.12:0), -0.55+VM.recoil*0.12);
   VM.group.rotation.set(VM.recoil*0.5, 0, reloading?Math.sin(game.time*12)*0.2:0);
+  artTickSwing(dt);   // quick-melee / pry animation overrides slot visibility
 }
 function artRecoil(v){ VM.recoil=Math.min(1,VM.recoil+v); }
 
@@ -2452,13 +2553,41 @@ const ICONS={
   proto:'<rect x="5" y="8" width="14" height="10" rx="2" fill="#1c2e2c" stroke="#2fc0b0" stroke-width="1.4"/><circle cx="12" cy="6" r="2.5" stroke="#2fc0b0" stroke-width="1.6" fill="none"/><circle cx="12" cy="13" r="2" fill="#2fc0b0"/>',
   realitykey:'<circle cx="7" cy="12" r="3.4" stroke="#e8c24a" stroke-width="2" fill="#4a3a10"/><path d="M10.4 12H21M17 12v3.4M19.6 12v2.4" stroke="#e8c24a" stroke-width="2" stroke-linecap="round"/>',
 };
+// SIGNATURE RINGS: each tool family gets its own ring pattern around the
+// icon so it reads at a glance — hazard dashes for weapons, dots for ammo,
+// a double band for gear, a glow halo for consumables, twin gold rings for
+// quest items, plain band for raw materials.
+const RING_FAMILY={};
+['crowbar','shotgun','rifle','molotov','emp','fence'].forEach(k=>RING_FAMILY[k]='weapon');
+['shells','rifleAmmo'].forEach(k=>RING_FAMILY[k]='ammo');
+['nvg','vest','boots','plate','booster','portgen'].forEach(k=>RING_FAMILY[k]='gear');
+['medkit','coffee'].forEach(k=>RING_FAMILY[k]='consumable');
+['keycard','wrongcard','mapfrag','realitykey','pressure','converter','proto'].forEach(k=>RING_FAMILY[k]='quest');
 function svgIcon(id,size=20){
   const g=ICONS[id]||'<circle cx="12" cy="12" r="6" fill="#8a95a3"/>';
   const chip=ICON_COLOR[id]||'#8a95a3';
+  const fam=RING_FAMILY[id]||'material';
+  let ring='';
+  switch(fam){
+    case 'weapon':   // hazard-striped ring
+      ring=`<circle cx="12" cy="12" r="11" fill="none" stroke="${chip}" stroke-width="1.6" stroke-dasharray="3.4 2.2" opacity="0.85"/>`; break;
+    case 'ammo':     // dotted ring
+      ring=`<circle cx="12" cy="12" r="11" fill="none" stroke="${chip}" stroke-width="1.8" stroke-dasharray="0.1 3.4" stroke-linecap="round" opacity="0.9"/>`; break;
+    case 'gear':     // double band
+      ring=`<circle cx="12" cy="12" r="11.2" fill="none" stroke="${chip}" stroke-width="0.9" opacity="0.8"/>`
+          +`<circle cx="12" cy="12" r="9.6" fill="none" stroke="${chip}" stroke-width="0.6" opacity="0.5"/>`; break;
+    case 'consumable': // soft glow halo
+      ring=`<circle cx="12" cy="12" r="11" fill="none" stroke="${chip}" stroke-width="2.6" opacity="0.25"/>`
+          +`<circle cx="12" cy="12" r="11" fill="none" stroke="${chip}" stroke-width="1" opacity="0.9"/>`; break;
+    case 'quest':    // twin gold-leaning rings
+      ring=`<circle cx="12" cy="12" r="11.2" fill="none" stroke="${chip}" stroke-width="1.1" opacity="0.95"/>`
+          +`<circle cx="12" cy="12" r="9.4" fill="none" stroke="#e8c24a" stroke-width="0.55" opacity="0.6"/>`; break;
+    default:         // raw material: plain quiet band
+      ring=`<circle cx="12" cy="12" r="11.2" fill="none" stroke="${chip}" stroke-width="0.8" opacity="0.5"/>`;
+  }
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" style="vertical-align:middle;display:inline-block">`
-    +`<circle cx="12" cy="12" r="11.3" fill="${chip}" opacity="0.16"/>`
-    +`<circle cx="12" cy="12" r="11.3" fill="none" stroke="${chip}" stroke-width="0.7" opacity="0.4"/>`
-    +g+`</svg>`;
+    +`<circle cx="12" cy="12" r="11.3" fill="${chip}" opacity="0.2"/>`
+    +ring+g+`</svg>`;
 }
 
 // ---------- CEILING DETAIL: vents, sprinkler pipes, hanging conduit ----------
@@ -2517,6 +2646,7 @@ function artResetFloorState(){
   floorProdMesh=null; seasonalBlink=null;
   boilerVents=[]; neonLights=[]; factoryBelts=[];
   if(typeof artApoReset==='function')artApoReset();
+  if(typeof artBatteryReset==='function')artBatteryReset();
   game.baseFloodDepth=0; game.floodDepth=0; game.floodStage=0; game.floodClock=0;
   if(game.weather==='FLOOD')game.weather='DRIZZLE'; // new floor drains the flood
   AudioEngine.setBedLevel&&AudioEngine.setBedLevel('breath',0);
@@ -3119,6 +3249,17 @@ function artElevatorCabin(cx,cz){
   const tileMat=new THREE.MeshStandardMaterial({map:TX.lino,roughness:0.5,metalness:0.05,color:0x9a9890}); disposables.push(tileMat);
   const pad=new THREE.Mesh(geo(new THREE.PlaneGeometry(W-0.3,D-0.3)),tileMat);
   pad.rotation.x=-Math.PI/2; pad.position.y=0.09; g.add(pad);
+  // laminated SCP classification card mounted on the back wall — readable
+  // up close (high-res texture), hold E for the full clean overlay
+  const cardTex=artScpCardTexture();
+  const card=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.62,0.93)),
+    new THREE.MeshBasicMaterial({map:cardTex}));
+  card.position.set(-1.2,2.55,-D/2+0.2); g.add(card);
+  const frame=_box(0.7,1.0,0.03,new THREE.MeshStandardMaterial({map:TX.metal,roughness:0.4,metalness:0.7,color:0x8a9098}),-1.2,2.55,-D/2+0.17);
+  disposables.push(frame.material); g.add(frame);
+  interactables.push({x:cx-1.2,z:cz-D/2+0.6,r:1.8,dur:0.7,prompt:'',
+    getPrompt:()=>'Read Safety Card [hold E]',canUse:()=>true,
+    onDone:()=>{ if(typeof showScpCard==='function')showScpCard(); }});
   world.add(g);
   return {cab:g,doorL,doorR,lamp,ceilLight,screen,indicator,panelLights,panelMesh:panel};
 }
@@ -3233,11 +3374,14 @@ function artGeneratorDress(x0,z0,w,d,gx,gz){
   const gauge=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.12,0.12,0.05,12)),new THREE.MeshBasicMaterial({color:0xe8e4d8}));
   disposables.push(gauge.material);
   gauge.rotation.x=Math.PI/2; gauge.position.set(gx-0.6,1.3,gz+0.73); world.add(gauge);
+  // sealed industrial battery housing — crowbar-pryable after winning the race
+  artBatteryHousing(gx,gz);
 }
 // generator ambience: hum noise pings + sparks while the power is OUT
 let genFxT=0;
 function generatorFxUpdate(dt){
   vaultDoorAnimUpdate(dt);
+  batteryHousingUpdate(dt);
   if(!generatorInfo)return;
   genFxT-=dt;
   if(game.power==='OFF'&&genFxT<=0){
@@ -3308,6 +3452,19 @@ function artUpgradeViewmodels(){
   grip.rotation.x=Math.PI/2; grip.position.z=0.05; fl.add(grip);
   fl.position.set(-0.45,-0.08,0.02); fl.rotation.set(0.1,0.15,0);
   VM.flashlight=fl; fl.visible=false; VM.group.add(fl);
+  // detailed hand (knuckles + curled fingers + thumb) replaces the box hand
+  if(VM.models.hand){
+    VM.group.remove(VM.models.hand);
+    const hand=artBuildHandModel(); hand.rotation.set(0.3,-0.1,0);
+    VM.models.hand=hand; hand.visible=false; VM.group.add(hand);
+  }
+  // gripping fingers wrapped around the crowbar shaft
+  if(VM.models.crowbar){
+    const skin=new THREE.MeshStandardMaterial({color:0xb08a6e,roughness:0.65}); disposables.push(skin);
+    for(let i=0;i<3;i++){ const f=_box(0.02,0.014,0.03,skin,0.012,-0.005+i*0.013,0.14+i*0.012);
+      f.rotation.x=0.4; VM.models.crowbar.add(f); }
+    VM.models.crowbar.add(_box(0.024,0.02,0.05,skin,-0.01,-0.01,0.15)); // palm wrap
+  }
 }
 
 // ---------- EXTRA LOOT MODELS (no squares anywhere) ----------
@@ -3330,6 +3487,191 @@ function artLootModelExtra(id,g,M){
       const h=new THREE.Mesh(geo(new THREE.TorusGeometry(0.05,0.012,6,10,Math.PI)),M.metal); h.position.set(0,0.14,0); g.add(h); return true; }
   }
   return false;
+}
+
+// ============================================================================
+// PHASE 5 — melee swing/pry animation, detailed hands, battery housing,
+// hazard signage, laminated SCP classification card
+// ============================================================================
+
+// ---------- CROWBAR SWING / PRY ANIMATION ----------
+// Right-click quick melee raises the crowbar from any slot and swings it:
+// windup -> strike arc with wrist twist -> damped recoil. A translucent
+// ghost copy trails the strike for a cheap motion-blur read.
+let swingGhost=null;
+function artStartSwing(mode){
+  if(!VM.models.crowbar)return;
+  VM.swing={t:0,dur:mode==='pry'?0.95:0.45,mode:mode||'swing'};
+  const crow=VM.models.crowbar;
+  if(!crow.userData.base)crow.userData.base={
+    rot:crow.rotation.clone(),pos:crow.position.clone()};
+  if(!swingGhost){
+    swingGhost=crow.clone();
+    swingGhost.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone();
+      o.material.transparent=true; o.material.opacity=0.22; o.material.depthWrite=false; } });
+    swingGhost.visible=false; VM.group.add(swingGhost);
+  }
+}
+function artStartPry(){ artStartSwing('pry'); }
+function artTickSwing(dt){
+  if(!VM.swing)return;
+  const crow=VM.models.crowbar, base=crow.userData.base;
+  if(!base){ VM.swing=null; return; }
+  VM.swing.t+=dt;
+  const p=Math.min(1,VM.swing.t/VM.swing.dur);
+  crow.visible=true;                                  // swing overrides slot pick
+  if(VM.models.hand&&VM.swing.mode==='swing')VM.models.hand.visible=false;
+  let rx=0,ry=0,rz=0,pz=0,py=0;
+  if(VM.swing.mode==='pry'){
+    // lift-open lever: bite low, heave up and back
+    if(p<0.35){ const k=p/0.35; rx=0.5*k; pz=-0.1*k; py=-0.06*k; }
+    else if(p<0.75){ const k=(p-0.35)/0.4; rx=0.5-1.3*k; rz=-0.3*k; py=-0.06+0.12*k; }
+    else { const k=(p-0.75)/0.25; rx=-0.8+0.8*k; rz=-0.3+0.3*k; py=0.06-0.06*k; }
+  } else {
+    if(p<0.3){ const k=p/0.3; rx=-0.55*k; ry=0.3*k; }                     // windup
+    else if(p<0.62){ const k=(p-0.3)/0.32; rx=-0.55+1.9*k; ry=0.3-0.5*k;  // strike + wrist twist
+      rz=-1.1*k; pz=-0.16*k; }
+    else { const k=(p-0.62)/0.38;                                          // damped recoil
+      const d=Math.sin(k*Math.PI)*0.12*(1-k);
+      rx=1.35-1.35*k+d; rz=-1.1+1.1*k; pz=-0.16+0.16*k; }
+  }
+  crow.rotation.set(base.rot.x+rx,base.rot.y+ry,base.rot.z+rz);
+  crow.position.set(base.pos.x,base.pos.y+py,base.pos.z+pz);
+  // ghost trail only during the fast strike window
+  if(swingGhost){
+    const striking=VM.swing.mode==='swing'&&p>0.3&&p<0.7;
+    swingGhost.visible=striking;
+    if(striking){
+      swingGhost.rotation.x+= (crow.rotation.x-swingGhost.rotation.x)*0.35;
+      swingGhost.rotation.y=crow.rotation.y; swingGhost.rotation.z+= (crow.rotation.z-swingGhost.rotation.z)*0.35;
+      swingGhost.position.copy(crow.position);
+    } else { swingGhost.rotation.copy(crow.rotation); }
+  }
+  if(p>=1){
+    crow.rotation.copy(base.rot); crow.position.copy(base.pos);
+    if(swingGhost)swingGhost.visible=false;
+    VM.swing=null;
+  }
+}
+
+// ---------- DETAILED HAND (knuckles, fingers, thumb) ----------
+function artBuildHandModel(){
+  const skin=new THREE.MeshStandardMaterial({color:0xb08a6e,roughness:0.65}); disposables.push(skin);
+  const h=new THREE.Group();
+  h.add(_box(0.07,0.07,0.2,MAT.vest,0.01,-0.045,0.11));            // sleeve
+  const palm=_box(0.075,0.03,0.09,skin,0,-0.02,-0.02); h.add(palm);
+  for(let i=0;i<4;i++){                                            // four fingers, curled
+    const f1=_box(0.016,0.02,0.045,skin,-0.027+i*0.018,-0.012,-0.085);
+    f1.rotation.x=0.5; h.add(f1);
+    const f2=_box(0.015,0.018,0.035,skin,-0.027+i*0.018,-0.036,-0.1);
+    f2.rotation.x=1.15; h.add(f2);
+    const kn=_box(0.017,0.012,0.014,skin,-0.027+i*0.018,-0.004,-0.065); h.add(kn); // knuckle
+  }
+  const th1=_box(0.02,0.02,0.05,skin,0.045,-0.025,-0.03); th1.rotation.y=-0.6; h.add(th1);  // thumb
+  return h;
+}
+
+// ---------- INDUSTRIAL BATTERY HOUSING (crowbar pry unlock) ----------
+let batteryHousing=null;
+function artBatteryHousing(gx,gz){
+  const shell=new THREE.MeshStandardMaterial({map:TX.metal,roughness:0.5,metalness:0.75,color:0x5a6a52}); disposables.push(shell);
+  const g=new THREE.Group();
+  g.add(_box(0.9,0.7,0.7,shell,0,0.35,0));
+  // hinged lid on a pivot at the back edge
+  const lidPivot=new THREE.Group(); lidPivot.position.set(0,0.72,-0.34);
+  const lid=_box(0.94,0.06,0.74,shell,0,0,0.34); lidPivot.add(lid);
+  g.add(lidPivot);
+  // hazard chevrons on the front
+  const hz=TextureFactory.label('HIGH VOLTAGE',{w:192,h:64,bg:'#c9a52a',fg:'#141414',size:24,grime:true});
+  const plate=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.7,0.22)),new THREE.MeshBasicMaterial({map:hz}));
+  plate.position.set(0,0.4,0.36); g.add(plate);
+  const x=gx+1.8, z=gz+1.2;
+  g.position.set(x,0,z); world.add(g);
+  batteryHousing={x,z,lidPivot,opened:false,anim:0};
+  interactables.push({x,z,r:2,dur:3.2,prompt:'',
+    getPrompt:()=>batteryHousing.opened?'Battery housing (emptied)':
+      (typeof vaultOutcome==='function'&&vaultOutcome()==='PLAYER')?'Pry Open Battery Housing [hold E] (crowbar)':
+      'Battery housing — sealed. Win the generator repair race first.',
+    canUse:()=>!batteryHousing.opened&&typeof vaultOutcome==='function'&&vaultOutcome()==='PLAYER',
+    onDone:()=>{
+      batteryHousing.opened=true; batteryHousing.anim=0.0001;
+      artStartPry(); AudioEngine.creak&&AudioEngine.creak();
+      sparkBurst(x,z); emitNoise(x,z,14,0.5,'pry');
+    }});
+}
+function batteryHousingUpdate(dt){
+  const b=batteryHousing; if(!b||!b.anim)return;
+  b.anim+=dt;
+  b.lidPivot.rotation.x=-Math.min(1,b.anim/0.9)*1.9;   // lid heaves open
+  if(b.anim>0.45&&!b.sparked){ b.sparked=true; sparkBurst(b.x,b.z); AudioEngine.zap(); }
+  if(b.anim>=0.9&&!b.awarded){ b.awarded=true; b.anim=0;
+    addItem('battery',2); AudioEngine.chime(); shakeCam(0.5);
+    subtitle('INDUSTRIAL CELLS RECOVERED — two High-Grade Batteries, still warm.','#ffd76a',4.5);
+  }
+}
+function artBatteryReset(){ batteryHousing=null; }
+
+// ---------- FREIGHT ELEVATOR HAZARD SIGN ----------
+function artHazardSign(x,z,ry){
+  const W=256,H=96,[c,cx]=_cvWH(W,H);
+  // worn yellow/black chevron border
+  cx.fillStyle='#c9a52a'; cx.fillRect(0,0,W,H);
+  cx.save(); cx.beginPath(); cx.rect(0,0,W,12); cx.rect(0,H-12,W,12); cx.clip();
+  cx.fillStyle='#141414';
+  for(let i=-1;i<W/16;i++){ cx.beginPath(); cx.moveTo(i*16,0); cx.lineTo(i*16+8,0);
+    cx.lineTo(i*16+8+H,H); cx.lineTo(i*16+H,H); cx.fill(); }
+  cx.restore();
+  cx.fillStyle='#141414'; cx.textAlign='center'; cx.textBaseline='middle';
+  cx.font='bold 22px Arial Narrow, Arial'; cx.fillText('FREIGHT ELEVATOR',W/2,36);
+  cx.font='bold 14px Arial Narrow, Arial'; cx.fillText('AUTHORIZED PERSONNEL ONLY',W/2,64);
+  // wear: scratches + grime
+  for(let i=0;i<26;i++){ cx.strokeStyle=`rgba(60,50,20,${0.15+Math.random()*0.25})`;
+    cx.lineWidth=1; cx.beginPath(); const sx=Math.random()*W,sy=Math.random()*H;
+    cx.moveTo(sx,sy); cx.lineTo(sx+(Math.random()-0.5)*36,sy+(Math.random()-0.5)*12); cx.stroke(); }
+  _grime(cx,Math.max(W,H),8,'30,26,10');
+  const t=new THREE.CanvasTexture(c); t.anisotropy=8; disposables.push(t);
+  const m=new THREE.Mesh(geo(new THREE.PlaneGeometry(1.7,0.64)),new THREE.MeshBasicMaterial({map:t}));
+  m.position.set(x,2.5,z); m.rotation.y=ry; world.add(m);
+}
+
+// ---------- LAMINATED SCP DANGER-CLASS NOTE (inside the cabin) ----------
+const SCP_CARD=[
+ ['SAFE','#4ade6a','Safe-class rooms are stable, predictable, and easily contained. Their environmental behavior is well-understood, and they require minimal monitoring. Even so, improper handling can still pose risks.'],
+ ['EUCLID','#f2d43a','Euclid-class rooms behave unpredictably or contain environmental mechanics not fully understood. They require active observation and controlled access. Rooms with autonomous or reactive environmental features typically fall under Euclid.'],
+ ['KETER','#ff4444','Keter-class rooms are extremely difficult to contain or stabilize. Their environmental behavior is complex, resource-intensive, and often unreliable. Keter does not necessarily mean dangerous — only that containment is challenging.'],
+ ['THAUMIEL','#9a7ae0','Thaumiel-class rooms are used by the Foundation to contain, neutralize, or counteract other rooms. Their structure and purpose are highly classified.'],
+ ['NEUTRALIZED','#8a939c','Neutralized rooms no longer exhibit anomalous environmental behavior — either destroyed, collapsed, or rendered inactive.'],
+ ['ARCHON','#e0b84a','Archon-class rooms could theoretically be contained, but containment is harmful or counterproductive. These rooms are integrated into reality in a way that makes interference dangerous.'],
+ ['APOLLYON','#ff2438','Apollyon-class rooms are uncontainable, unstable, and pose catastrophic environmental threats. Often associated with large-scale or world-ending scenarios.'],
+];
+function artScpCardTexture(){
+  const W=512,H=768,[c,x]=_cvWH(W,H);
+  // laminated card: off-white, thin border, punched header
+  x.fillStyle='#e8e4d6'; x.fillRect(0,0,W,H);
+  x.strokeStyle='#8a8578'; x.lineWidth=6; x.strokeRect(8,8,W-16,H-16);
+  x.fillStyle='#1a1c22'; x.fillRect(16,16,W-32,64);
+  x.fillStyle='#e8e4d6'; x.textAlign='center'; x.font='bold 26px Arial Narrow, Arial';
+  x.fillText('ROOM RESEARCH CLASSIFICATIONS',W/2,44);
+  x.font='12px Arial'; x.fillStyle='#a8a498'; x.fillText('SITE ∞MART — SAFETY REFERENCE CARD',W/2,66);
+  let y=104;
+  x.textAlign='left';
+  SCP_CARD.forEach(([name,col,body])=>{
+    x.fillStyle=col; x.fillRect(24,y-14,10,18);
+    x.fillStyle='#1a1c22'; x.font='bold 20px Arial Narrow, Arial'; x.fillText(name,44,y);
+    x.font='12px Arial'; x.fillStyle='#3a3c40';
+    // simple word wrap
+    const words=body.split(' '); let line='',ly=y+18;
+    for(const w of words){ if(x.measureText(line+w).width>W-70){ x.fillText(line,32,ly); ly+=15; line=''; }
+      line+=w+' '; }
+    x.fillText(line,32,ly);
+    y=ly+30;
+  });
+  // lamination sheen
+  const sheen=x.createLinearGradient(0,0,W,H);
+  sheen.addColorStop(0,'rgba(255,255,255,0.12)'); sheen.addColorStop(0.4,'rgba(255,255,255,0)');
+  sheen.addColorStop(0.7,'rgba(255,255,255,0.07)'); sheen.addColorStop(1,'rgba(255,255,255,0)');
+  x.fillStyle=sheen; x.fillRect(0,0,W,H);
+  const t=new THREE.CanvasTexture(c); t.anisotropy=8; disposables.push(t); return t;
 }
 
 // ================================ SECTION 11: INTERACTION ENGINE ===========
@@ -3379,7 +3721,7 @@ function updateCarry(dt){
   const [dx,dz]=aimDir();
   b.mesh.position.set(player.x+dx*1.8,0.7,player.z+dz*1.8);
   if(Input.keys.KeyR){ b.mesh.rotation.y+=dt*2.4; }
-  if(Input.consumeAlt()){ // right click = weld
+  if(player.weldRequest){ player.weldRequest=false;  // right click while carrying = weld (routed via updateWeapon)
     const [cx,cz]=worldToCell(b.mesh.position.x,b.mesh.position.z);
     if(cellBlocked(cx,cz)){ subtitle('Blocked — find a clear spot.','#ffaa66',1.5); return; }
     if(!weldTouchesStructure(cx,cz)){ subtitle('Weld must touch a wall, shelf, or another weld.','#ffaa66',1.8); return; }
@@ -3592,6 +3934,7 @@ function updateLightingMood(initial){
   else if(game.shift==='MORNING')amb=dark?0.32:0.62;
   else amb=dark?0.07:0.11;
   if(game.weather==='STORM')amb*=0.8;
+  amb*=(game.ambMul||1);                              // per-level light signature
   ambientLight.intensity=amb;
   hemiLight.intensity=amb*0.6;
   let fogD= game.weather==='FOGBANK'?0.075: game.weather==='STORM'?0.05: (game.shift==='NIGHT'?0.038:0.02);
@@ -3610,7 +3953,7 @@ function updateLightingMood(initial){
     hemiLight.intensity=0.4;
     scene.background=new THREE.Color(0x3a2c10);
     scene.fog.density=0.045; scene.fog.color.setHex(0x4a3a18);
-  } else ambientLight.color.setHex(0xbfc4cc);
+  } else ambientLight.color.setHex(game.ambTintHex||0xbfc4cc);
   // fixture states
   fixtures.forEach(f=>{
     const on=game.power==='ON'&&(game.shift==='MORNING'||f.litAtNight);
@@ -3735,8 +4078,11 @@ function updateHazards(dt){
 
 // ================================ SECTION 18: ELEVATOR ======================
 // ---- SCP level intro card ----
-const CLASS_COLORS={SAFE:'#7ac47a','TICONDEROGA':'#d8c96a',EUCLID:'#e8a04a',
-  'EUCLID → KETER':'#e07040',KETER:'#e04a4a','ARCHON-SAFE':'#6aa8d8',APOLLYON:'#ff3a6a'};
+// SCP danger-class palette (per the laminated card):
+// Safe=green · Euclid=yellow · Keter=red · Archon=gold · Apollyon=black/red
+const CLASS_COLORS={SAFE:'#4ade6a','TICONDEROGA':'#d8c96a',EUCLID:'#f2d43a',
+  'EUCLID → KETER':'#ff9a3a',KETER:'#ff4444','ARCHON-SAFE':'#e0b84a',APOLLYON:'#ff2438',
+  THAUMIEL:'#9a7ae0',NEUTRALIZED:'#8a939c'};
 function showLevelCard(biome,secs){
   const m=LEVEL_META[biome]||{lv:'???',name:biome,clazz:'PENDING',intro:''};
   el('lcLevel').textContent='LEVEL '+m.lv;
@@ -3779,11 +4125,16 @@ function startElevatorTransit(destBiome){
   const dangerDest=/KETER|APOLLYON/.test((LEVEL_META[dest]||{}).clazz||'');
   let t=0; const dur=8.0, closeDur=1.4, openStart=dur-1.2;
   const startFloor=game.floor;
-  if(typeof setElevatorDoors==='function')setElevatorDoors(0); // start open
+  if(typeof setElevatorDoors==='function')setElevatorDoors(1); // fully open at boarding
+  AudioEngine.slide&&AudioEngine.slide();                       // doors begin to glide shut
+  let thunked=false;
   const iv=setInterval(()=>{
     t+=0.1;
-    // 1) doors slide CLOSED over closeDur
-    if(t<=closeDur&&typeof setElevatorDoors==='function')setElevatorDoors(1-t/closeDur);
+    // 1) doors slide fully CLOSED over closeDur (p:1 open -> 0 closed)
+    if(t<=closeDur&&typeof setElevatorDoors==='function')setElevatorDoors(Math.max(0,1-t/closeDur));
+    if(!thunked&&t>=closeDur){ thunked=true;
+      if(typeof setElevatorDoors==='function')setElevatorDoors(0);  // guarantee flush, no gap
+      AudioEngine.clank&&AudioEngine.clank(); }                     // seat thunk
     // 2) travel: shake, light flicker, rolling floor counter on the screen
     if(elevatorInfo.lamp)elevatorInfo.lamp.material=Math.random()<0.86?MAT.fixtureOn:MAT.fixtureOff;
     if(elevatorInfo.ceilLight)elevatorInfo.ceilLight.intensity=Math.random()<0.86?1.1:0.2;
@@ -3792,7 +4143,10 @@ function startElevatorTransit(destBiome){
       const shown='B'+(startFloor+Math.min(Math.floor((t-closeDur)/((openStart-closeDur))*(startFloor+1)),startFloor));
       setElevScreen(shown);
     }
-    player.x=px; player.z=pz;                            // safety boundary: locked in cabin
+    // free movement inside the cabin: updatePlayer runs during transit (see
+    // tick); here we only keep the player inside the moving car's bounds
+    player.x=clamp(player.x,px-1.55,px+1.55);
+    player.z=clamp(player.z,pz-1.55,pz+1.55);
     if(t>=dur){
       clearInterval(iv);
       game.floor++;
@@ -3814,6 +4168,7 @@ function startElevatorTransit(destBiome){
 }
 // doors slide open on arrival; KETER/APOLLYON floors JAM partway with a screech
 function animateArrivalDoors(jam){
+  AudioEngine.slide&&AudioEngine.slide();
   let p=0; const iv=setInterval(()=>{
     p+=0.06;
     let target=p;
@@ -3888,6 +4243,16 @@ function findGenerator(){
   subtitle('The generator room. It was always humming somewhere.','#8fa3b8',2.5);
 }
 
+// laminated cabin safety card — full readable version in the note overlay
+function showScpCard(){
+  el('noteTitle').textContent='ROOM RESEARCH CLASSIFICATIONS';
+  el('noteBody').innerHTML=SCP_CARD.map(([name,col,body])=>
+    `<b style="color:${col};letter-spacing:0.15em">${name}</b><br>${body}`).join('<br><br>');
+  el('noteOverlay').style.display='flex';
+  game.paused=true;
+  AudioEngine.staticBurst(0.3,0.03);
+}
+
 // ================================ SECTION 19: LORE / UI / HUD ===============
 function foundNote(idx){
   if(!game.notesFound.includes(idx))game.notesFound.push(idx);
@@ -3902,22 +4267,43 @@ function subtitle(text,color,secs){
   const s=el('subtitle'); s.textContent=text; s.style.color=color||'#fff'; s.style.opacity=1;
   clearTimeout(subT); subT=setTimeout(()=>s.style.opacity=0,secs*1000);
 }
+// UI STABILITY: the hotbar DOM is built exactly ONCE; refreshes only touch
+// count text and the active class. Icons can never flicker, morph, or
+// vanish mid-game because their nodes are never recreated.
+const MATBAR_IDS=['bolts','powder','pipe','handle','wires','battery','cloth','medkit'];
 function refreshHotbar(){
-  const bar=el('hotbar'); bar.innerHTML='';
-  SLOTS.forEach((id,i)=>{
-    const d=document.createElement('div');
-    d.className='slot'+(i===player.slot?' active':'');
-    let label='',count='';
-    if(id==='crowbar'){label=svgIcon('crowbar');count='';}
-    else if(id==='shotgun'){label=svgIcon('shotgun');count=inv.owned.shotgun?player.shotgunLoaded+'|'+(inv.counts.shells||0):'—';}
-    else if(id==='rifle'){label=svgIcon('rifle');count=inv.owned.rifle?player.rifleLoaded+'|'+(inv.counts.rifleAmmo||0):'—';}
-    else {label=svgIcon(id);count=(inv.counts[id]||0)||'—';}
-    d.innerHTML=`<span class="ico">${label}</span><span class="cnt">${count}</span><span class="key">${i+1}</span>`;
-    bar.appendChild(d);
+  const bar=el('hotbar');
+  if(!bar._built){
+    bar.innerHTML='';
+    bar._slots=SLOTS.map((id,i)=>{
+      const d=document.createElement('div');
+      d.className='slot';
+      d.innerHTML=`<span class="ico">${svgIcon(id)}</span><span class="cnt"></span><span class="key">${i+1}</span>`;
+      bar.appendChild(d); return d;
+    });
+    const mb=el('matbar'); mb.innerHTML='';
+    mb._counts=MATBAR_IDS.map(m=>{
+      const s=document.createElement('span'); s.className='mat';
+      s.innerHTML=`${svgIcon(m,14)}<b>0</b>`; mb.appendChild(s);
+      return s.querySelector('b');
+    });
+    bar._built=true;
+  }
+  bar._slots.forEach((d,i)=>{
+    const id=SLOTS[i];
+    let count;
+    if(id==='crowbar')count='';
+    else if(id==='shotgun')count=inv.owned.shotgun?player.shotgunLoaded+'|'+(inv.counts.shells||0):'—';
+    else if(id==='rifle')count=inv.owned.rifle?player.rifleLoaded+'|'+(inv.counts.rifleAmmo||0):'—';
+    else count=String((inv.counts[id]||0)||'—');
+    const cnt=d.querySelector('.cnt');
+    if(cnt.textContent!==count)cnt.textContent=count;
+    d.classList.toggle('active',i===player.slot);
   });
-  // materials strip
-  const mats=['bolts','powder','pipe','handle','wires','battery','cloth','medkit'];
-  el('matbar').innerHTML=mats.map(m=>`<span class="mat">${svgIcon(m,14)}<b>${inv.counts[m]||0}</b></span>`).join('');
+  el('matbar')._counts.forEach((b,i)=>{
+    const v=String(inv.counts[MATBAR_IDS[i]]||0);
+    if(b.textContent!==v)b.textContent=v;
+  });
 }
 function cycleSlot(d){ player.slot=(player.slot+d+SLOTS.length)%SLOTS.length; refreshHotbar(); }
 function updateHUD(dt){
@@ -4114,6 +4500,11 @@ function tick(now){
   if(game.paused){ renderer.render(scene,camera); return; }
   game.time+=dt;
 
+  if(game.state==='transit'){
+    // the cabin is a small room, not a cutscene: walk, look, breathe.
+    // The transit interval clamps position to the car bounds.
+    updatePlayer(dt);
+  }
   if(game.state==='play'){
     updatePlayer(dt);
     flowT-=dt; if(flowT<=0){ flowT=0.45; rebuildFlowField(player.x,player.z); }
