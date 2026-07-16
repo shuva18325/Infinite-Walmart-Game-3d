@@ -6233,7 +6233,10 @@ function onKeyDown(code){
       break;
     case 'KeyM': // call the elevator menu from anywhere
       if(el('elevMenu').style.display==='flex'){ el('elevMenu').style.display='none'; game.paused=false; }
-      else if(!elevatorInfo||!elevatorInfo.busy)openElevatorMenu();
+      else if(!elevatorInfo||!elevatorInfo.busy){
+        if(elevatorInfo)elevatorInfo.rearm=false;   // pressing M is explicit intent — never silently block it
+        openElevatorMenu();
+      }
       break;
     case 'F5': if(typeof saveGame==='function')saveGame(); break;   // quicksave
   }
