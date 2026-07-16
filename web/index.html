@@ -131,6 +131,8 @@
   .ebtn.apo{--ebc:#7a2a3a;}
   .ebtn.apo:not(.locked){--ebc:#ff3a6a;box-shadow:0 0 16px rgba(255,58,106,0.25);}
   .ebtn.apo:not(.locked):hover{box-shadow:0 0 22px rgba(255,58,106,0.45),0 6px 16px rgba(0,0,0,0.45);}
+  .ebtn.override{--ebc:#a04ae8;box-shadow:0 0 14px rgba(160,74,232,0.22);}
+  .ebtn.override:hover{box-shadow:0 0 20px rgba(160,74,232,0.4),0 6px 16px rgba(0,0,0,0.45);}
   .ebLv{font-size:1.18em;font-weight:bold;color:#ffe9b0;letter-spacing:0.04em;font-variant-numeric:tabular-nums;}
   .ebName{font-size:0.72em;color:#cfe0ee;letter-spacing:0.03em;line-height:1.25;}
   .ebClass{font-size:0.6em;letter-spacing:0.16em;font-weight:bold;color:var(--ebc,#8fa3b8);}
@@ -921,11 +923,23 @@ function buildElevatorRoom(rng){
     artHazardSign(sx-0.55,sz,-Math.PI/2);
   }
   // interacting opens the elevator MENU (manual floor selection) instead of
-  // an immediate ride
+  // an immediate ride — unless an uninstalled Room Leaper is being carried,
+  // in which case the same panel installs it first
   interactables.push({x:cx,z:cz,r:2.4,dur:0.6,prompt:'Elevator Panel [hold E]',
-    getPrompt:()=>elevatorInfo.busy?'':(elevatorInfo.rearm?'Step out of the elevator first':'Elevator Panel [hold E]'),
+    getPrompt:()=>{
+      if(elevatorInfo.busy)return '';
+      if(elevatorInfo.rearm)return 'Step out of the elevator first';
+      if((inv.counts.leaper||0)>0&&!game.leaperInstalled)return 'Install Room Leaper [hold E]';
+      return 'Elevator Panel [hold E]';
+    },
     canUse:()=>!elevatorInfo.busy&&!elevatorInfo.rearm&&game.state==='play',
-    onDone:()=>openElevatorMenu()});
+    onDone:()=>{
+      if((inv.counts.leaper||0)>0&&!game.leaperInstalled){
+        if(typeof installRoomLeaper==='function')installRoomLeaper();
+        return;
+      }
+      openElevatorMenu();
+    }});
 }
 
 function buildGeneratorRoom(rng){
@@ -1272,7 +1286,7 @@ const RECIPES=[
   {out:'plate',n:1,tier:2,cost:{pipe:2,bolts:4},desc:'Applied on assembly: reinforces your nearest welded barricade with +160 durability plating.'},
   {out:'booster',n:1,tier:2,cost:{battery:1,bolts:2},desc:'Applied on assembly: your nearest electric fence gains battery backup — live even in blackouts.'},
   {out:'battery',n:2,tier:1,cost:{proto:1},desc:'Strip a Level 10^100 prototype for its power cells.'},
-  {out:'leaper',n:1,tier:2,cost:{coggear:1,goldbat:1,converter:1},desc:'THE ROOM LEAPER. Installs into the elevator panel: Floor Preview Mode. Every use raises the Chaos Level — Nezer activity and entity aggression follow.'},
+  {out:'leaper',n:1,tier:2,cost:{coggear:1,goldbat:1,converter:1},desc:'THE ROOM LEAPER. Carry it to the elevator panel and interact to install it: unlocks Floor Preview Override, reaching any floor. Every directed jump raises the Chaos Level — Nezer activity and entity aggression follow.'},
 ];
 const LORE=[
  {t:'CRUMPLED SCHEDULE',b:'Week 340. Same names. Nobody remembers being hired. Nobody remembers the doors. Dana in Produce swears the parking lot is painted on. She stopped clocking out. Then she stopped being Dana.'},
@@ -1296,6 +1310,7 @@ const LORE=[
 const inv={counts:{},owned:{crowbar:true}};
 function addItem(id,n=1){ inv.counts[id]=(inv.counts[id]||0)+n;
   if(id==='shotgun'||id==='rifle'||id==='nvg'||id==='vest'||id==='boots')inv.owned[id]=true;
+  if((id==='shotgun'||id==='rifle')&&!player.gunKind)player.gunKind=id;
   refreshHotbar(); }
 function hasItems(cost){ return Object.entries(cost).every(([k,v])=>(inv.counts[k]||0)>=v); }
 function consumeItems(cost){ if(!hasItems(cost))return false;
@@ -1821,8 +1836,17 @@ const player={
   slot:0, reload:0, shotgunLoaded:2, rifleLoaded:0, fireCd:0,
   interactT:0, interactTarget:null, dmgFlash:0, exhausted:false,
   carrying:null, // grabbed crate ref
+  gunKind:null, // 'shotgun' | 'rifle' — which gun the merged GUN slot fires
 };
-const SLOTS=['crowbar','shotgun','rifle','molotov','emp','fence'];
+// ONE gun slot: holds whichever firearm(s) are owned. If both are owned,
+// re-pressing the slot's hotkey toggles between them (see onKeyDown).
+const SLOTS=['crowbar','gun','molotov','emp','fence','leaper'];
+function activeGun(){
+  if(inv.owned.shotgun&&inv.owned.rifle)return player.gunKind||(player.gunKind='rifle');
+  if(inv.owned.rifle)return 'rifle';
+  if(inv.owned.shotgun)return 'shotgun';
+  return null;
+}
 
 function playerCanSee(x,z){ // frustum-ish: within 100° of view and LOS
   const dx=x-player.x,dz=z-player.z;
@@ -1963,7 +1987,8 @@ function updateWeapon(dt){
     if(player.carrying)player.weldRequest=true;
     else tryQuickMelee();
   }
-  const slot=SLOTS[player.slot];
+  const rawSlot=SLOTS[player.slot];
+  const slot=rawSlot==='gun'?(activeGun()||'gun'):rawSlot;
   const firing=Input.consumeFire();
   if(player.reload>0)return;
   const wantsToAct=firing||(slot==='rifle'&&Input.fireHeld&&inv.owned.rifle);
@@ -2000,8 +2025,9 @@ function updateWeapon(dt){
   // cooldown) — always give an audible + readable reason, never silence
   if(wantsToAct&&!acted&&player.fireCd<=0){
     player.fireCd=0.25; AudioEngine.click(180,0.12);
-    const reasons={shotgun:'No Pipe Shotgun crafted yet.',rifle:'No rifle in hand.',
-      molotov:'Out of molotovs.',emp:'Out of EMP grenades.',fence:'Out of fence kits.'};
+    const reasons={gun:'No gun crafted yet.',shotgun:'No Pipe Shotgun crafted yet.',rifle:'No rifle in hand.',
+      molotov:'Out of molotovs.',emp:'Out of EMP grenades.',fence:'Out of fence kits.',
+      leaper:(inv.counts.leaper||0)>0?'Bring the Room Leaper to the elevator panel and interact to install it.':'No Room Leaper assembled yet.'};
     if(reasons[slot])subtitle(reasons[slot],'#8fa3b8',1.3);
   }
 }
@@ -2065,7 +2091,8 @@ function muzzleFlash(){ if(!muzzleLight){muzzleLight=new THREE.PointLight(0xffcc
   muzzleLight.position.set(player.x,1.5,player.z); muzzleLight.intensity=3;
   setTimeout(()=>muzzleLight.intensity=0,60); }
 function reloadWeapon(){
-  const slot=SLOTS[player.slot];
+  const rawSlot=SLOTS[player.slot];
+  const slot=rawSlot==='gun'?(activeGun()||'gun'):rawSlot;
   if(slot==='shotgun'&&inv.owned.shotgun&&player.shotgunLoaded<2&&(inv.counts.shells||0)>0){
     player.reload=2.5; AudioEngine.click(500,0.2); emitNoise(player.x,player.z,8,0.3,'reload');
     subtitle('Reloading… (slow. stay hidden)','#ffcf99',2);
@@ -2550,8 +2577,9 @@ function artBuildViewmodel(){
 }
 function artUpdateViewmodel(dt,moving,running){
   if(!VM.group)return;
-  const slot=SLOTS[player.slot];
-  const key=slot==='crowbar'?'crowbar':slot==='shotgun'&&inv.owned.shotgun?'shotgun':slot==='rifle'&&inv.owned.rifle?'rifle':'hand';
+  const rawSlot=SLOTS[player.slot];
+  const gunSlot=rawSlot==='gun'?activeGun():null;
+  const key=rawSlot==='crowbar'?'crowbar':gunSlot==='shotgun'?'shotgun':gunSlot==='rifle'?'rifle':'hand';
   Object.entries(VM.models).forEach(([k,m])=>m.visible=(k===key));
   if(VM.flashlight)VM.flashlight.visible=player.flashlight;   // handheld torch in the off-hand
   VM.recoil=Math.max(0,VM.recoil-dt*6);
@@ -3353,7 +3381,8 @@ function drawElevPanel(){
   // brushed steel plate
   x.fillStyle='#7d838b'; x.fillRect(0,0,W,H);
   for(let i=0;i<H;i+=2){ x.fillStyle=`rgba(255,255,255,${Math.random()*0.05})`; x.fillRect(0,i,W,1); }
-  x.strokeStyle='#3c4046'; x.lineWidth=6; x.strokeRect(4,4,W-8,H-8);
+  x.strokeStyle=(typeof game!=='undefined'&&game.leaperInstalled)?'#a04ae8':'#3c4046';
+  x.lineWidth=6; x.strokeRect(4,4,W-8,H-8);
   const btn=(bx,by,label,opt={})=>{
     // recessed black button + glow ring, braille dots under label
     x.beginPath(); x.arc(bx,by,26,0,7); x.fillStyle=opt.rust?'#5a4636':'#15171a'; x.fill();
@@ -4199,6 +4228,36 @@ function variantVoiceUpdate(e,dt){
     } }
 }
 
+// ---- ROOM LEAPER: installation at the elevator panel -----------------------
+// Carried as an item from the crafting bench; interacting with the elevator
+// panel while holding one installs it (consuming it) and triggers a short
+// panel-light overload — the visible "something recalculates" moment.
+function installRoomLeaper(){
+  inv.counts.leaper=Math.max(0,(inv.counts.leaper||0)-1);
+  game.leaperInstalled=true;
+  refreshHotbar();
+  subtitle('ROOM LEAPER installed. Floor Preview Override online — every level is now reachable. Chaos Level will rise with every directed jump.','#a04ae8',5.5);
+  AudioEngine.chime(); AudioEngine.staticBurst(0.9,0.08); AudioEngine.zap&&AudioEngine.zap();
+  shakeCam(0.5);
+  if(elevatorInfo){ elevatorInfo.installFx=1.6; sparkBurst(elevatorInfo.x,elevatorInfo.z); }
+  if(typeof artRefreshElevPanel==='function')artRefreshElevPanel();
+}
+// per-frame: the brief purple panel-light pulse right after installation,
+// AND the recalculation flicker during any Room Leaper transit (warpFx)
+function leaperPanelUpdate(dt){
+  if(!elevatorInfo)return;
+  if(elevatorInfo.installFx>0){
+    elevatorInfo.installFx-=dt;
+    const pulse=Math.sin(game.time*22)>0;
+    if(elevatorInfo.panelLights)elevatorInfo.panelLights.forEach(b=>b.material.color.setHex(pulse?0xa04ae8:0x33ff66));
+    if(elevatorInfo.ceilLight)elevatorInfo.ceilLight.color.setHex(pulse?0xa04ae8:0xfff2d0);
+    if(elevatorInfo.installFx<=0){
+      if(elevatorInfo.panelLights)elevatorInfo.panelLights.forEach(b=>b.material.color.setHex(0x33ff66));
+      if(elevatorInfo.ceilLight)elevatorInfo.ceilLight.color.setHex(0xfff2d0);
+    }
+  }
+}
+
 // ---- ROOM LEAPER: floor preview data ---------------------------------------
 function floorPreviewInfo(biome){
   const m=LEVEL_META[biome]||{clazz:'PENDING'};
@@ -4243,7 +4302,7 @@ const ITEM_DESC={
   realitykey:'THE REALITY KEY. The Gate of Escape acknowledges exactly one.',
   coggear:'COGNITIVE GEAR. A rotating mechanical stabilizer. It turns even when watched. Required for advanced machinery.',
   goldbat:'GOLDEN WIRE WRAPPED BATTERY. High-capacity cell wound in gold filament. The filament hums at rest.',
-  leaper:'THE ROOM LEAPER. Installs into the elevator panel. Unlocks Floor Preview Mode. Each use raises the Chaos Level. Use sparingly.',
+  leaper:'THE ROOM LEAPER. Bring it to the elevator panel and interact to install it. Unlocks Floor Preview Override — every floor becomes reachable. Each directed jump raises the Chaos Level. Use sparingly.',
 };
 
 // ---- INVENTORY SYSTEM (I) — drag & drop, craft slots, preview -------------
@@ -4765,7 +4824,7 @@ function showLevelCard(biome,secs){
 function closeLevelCard(){ el('levelCard').style.display='none'; clearTimeout(showLevelCard._t); }
 
 // destBiome: a forced biome key, or null for the normal random descent.
-function startElevatorTransit(destBiome){
+function startElevatorTransit(destBiome,warp){
   if(elevatorInfo.busy)return;
   elevatorInfo.busy=true; game.state='transit';
   const px=elevatorInfo.x, pz=elevatorInfo.z;
@@ -4774,7 +4833,7 @@ function startElevatorTransit(destBiome){
   AudioEngine.elevator(true); AudioEngine.staticBurst(1,0.05);
   // announce the destination — the panel already knows where you're going
   const dest=destBiome||previewBiome(game.floor+1);
-  intercom(randPick(Math.random,[
+  intercom(warp?'Room Leaper override accepted. Recalculating destination.':randPick(Math.random,[
     'Going down.',
     'Thank you for shopping with us. And below us.',
     'Now arriving: housewares, garden, and the dark.',
@@ -4796,10 +4855,20 @@ function startElevatorTransit(destBiome){
     // 2) travel: shake, light flicker, rolling floor counter on the screen
     if(elevatorInfo.lamp)elevatorInfo.lamp.material=Math.random()<0.86?MAT.fixtureOn:MAT.fixtureOff;
     if(elevatorInfo.ceilLight)elevatorInfo.ceilLight.intensity=Math.random()<0.86?1.1:0.2;
-    shakeCam(dangerDest?0.3:0.18);
+    // ROOM LEAPER WARP FX: the cabin overloads with purple recalculation
+    // light instead of the plain flicker — a visible "override in progress"
+    if(warp){
+      if(elevatorInfo.ceilLight)elevatorInfo.ceilLight.color.setHex(Math.random()<0.5?0xa04ae8:0xfff2d0);
+      if(elevatorInfo.panelLights)elevatorInfo.panelLights.forEach(b=>b.material.color.setHex(Math.random()<0.6?0xa04ae8:0x33ff66));
+      if(Math.random()<0.15)AudioEngine.zap&&AudioEngine.zap();
+    }
+    shakeCam(dangerDest?0.3:(warp?0.26:0.18));
     if(typeof setElevScreen==='function'&&t>closeDur){
-      const shown='B'+(startFloor+Math.min(Math.floor((t-closeDur)/((openStart-closeDur))*(startFloor+1)),startFloor));
-      setElevScreen(shown);
+      if(warp&&Math.random()<0.3)setElevScreen('OVERRIDE');
+      else{
+        const shown='B'+(startFloor+Math.min(Math.floor((t-closeDur)/((openStart-closeDur))*(startFloor+1)),startFloor));
+        setElevScreen(shown);
+      }
     }
     // free movement inside the cabin: updatePlayer runs during transit (see
     // tick); here we only keep the player inside the moving car's bounds
@@ -4807,6 +4876,8 @@ function startElevatorTransit(destBiome){
     player.z=clamp(player.z,pz-1.55,pz+1.55);
     if(t>=dur){
       clearInterval(iv);
+      if(warp&&elevatorInfo.ceilLight)elevatorInfo.ceilLight.color.setHex(0xfff2d0);
+      if(warp&&elevatorInfo.panelLights)elevatorInfo.panelLights.forEach(b=>b.material.color.setHex(0x33ff66));
       game.floor++;
       buildFloor(game.floor);
       const e=elevatorInfo; player.x=e.x; player.z=e.z;  // arrive inside new cabin
@@ -4866,15 +4937,19 @@ function openElevatorMenu(){
       const m=LEVEL_META[b]||{lv:'?',name:b,clazz:'PENDING'};
       const discovered=b==='RETAIL'||(game.discovered&&game.discovered[b]);
       const isApo=b==='LVAPO';
-      const locked=isApo?!apoUnlocked():!discovered;
+      // ROOM LEAPER OVERRIDE: installed, it bypasses the discovery lock on
+      // every ordinary floor (the Threshold still needs the Reality Key)
+      const override=game.leaperInstalled&&!discovered&&!isApo;
+      const locked=isApo?!apoUnlocked():(!discovered&&!override);
       const div=document.createElement('div');
-      div.className='ebtn'+(locked?' locked':'')+(isApo?' apo':'');
+      div.className='ebtn'+(locked?' locked':'')+(isApo?' apo':'')+(override?' override':'');
       const cls=CLASS_COLORS[m.clazz]||'#8fa3b8';
       div.style.setProperty('--ebc',cls);
       // ROOM LEAPER — Floor Preview Mode: thumbnail, danger rating, flood
-      // level, resident entity type (discovered floors only)
+      // level, resident entity type (discovered floors, or ANY floor once
+      // the leaper is installed and overriding the lock)
       let preview='';
-      if(game.leaperInstalled&&discovered&&typeof floorPreviewInfo==='function'){
+      if(game.leaperInstalled&&(discovered||override)&&typeof floorPreviewInfo==='function'){
         const info=floorPreviewInfo(b);
         const t=(typeof BIOME_TINTS==='object'&&BIOME_TINTS&&BIOME_TINTS[b])||{wall:0x8a9199,floor:0xb0ada4};
         const hex=n=>'#'+n.toString(16).padStart(6,'0');
@@ -4884,7 +4959,7 @@ function openElevatorMenu(){
       }
       div.innerHTML=(locked?'<span class="ebLock">&#128274;</span>':'')+
         `<span class="ebLv">${m.lv}</span>`+
-        `<span class="ebName">${locked&&!discovered&&!isApo?'UNDISCOVERED':m.name}</span>`+
+        `<span class="ebName">${locked&&!discovered&&!isApo?'UNDISCOVERED':(override?m.name+' — OVERRIDE':m.name)}</span>`+
         `<span class="ebClass">${locked&&!discovered&&!isApo?'&nbsp;':m.clazz}</span>`+preview;
       if(!locked)div.onclick=()=>chooseFloor(b);
       else if(isApo)div.title='Requires the Reality Key or a Wrong-Floor Keycard';
@@ -4898,11 +4973,13 @@ function chooseFloor(biome){
   // teleport into the cabin if we opened the menu remotely
   if(elevatorInfo){ player.x=elevatorInfo.x; player.z=elevatorInfo.z; }
   // Room Leaper usage cost: Chaos Level rises with every directed jump
+  let warp=false;
   if(biome&&game.leaperInstalled){
     game.chaosLevel=Math.min(10,(game.chaosLevel||0)+1);
     subtitle('Room Leaper engaged. Chaos Level '+game.chaosLevel+'. Something recalculates.','#a04ae8',3.5);
+    warp=true; shakeCam(0.6); AudioEngine.staticBurst(1,0.1); AudioEngine.zap&&AudioEngine.zap();
   }
-  startElevatorTransit(biome);   // null => random descent
+  startElevatorTransit(biome,warp);   // null biome => random descent
 }
 function findElevator(){
   if(!elevatorInfo)return;
@@ -4967,8 +5044,18 @@ function refreshHotbar(){
     const id=SLOTS[i];
     let count;
     if(id==='crowbar')count='';
-    else if(id==='shotgun')count=inv.owned.shotgun?player.shotgunLoaded+'|'+(inv.counts.shells||0):'—';
-    else if(id==='rifle')count=inv.owned.rifle?player.rifleLoaded+'|'+(inv.counts.rifleAmmo||0):'—';
+    else if(id==='gun'){
+      const k=typeof activeGun==='function'?activeGun():null;
+      count=k==='shotgun'?player.shotgunLoaded+'|'+(inv.counts.shells||0):
+            k==='rifle'?player.rifleLoaded+'|'+(inv.counts.rifleAmmo||0):'—';
+      // the gun slot's icon swaps between shotgun/rifle art as ownership
+      // or the toggle (re-press slot key) changes which one is active
+      if(d.dataset.gunKind!==String(k)){
+        d.dataset.gunKind=String(k);
+        d.querySelector('.ico').innerHTML=svgIcon(k||'shotgun');
+      }
+    }
+    else if(id==='leaper')count=game.leaperInstalled?'ON':String(inv.counts.leaper||0)||'—';
     else count=String((inv.counts[id]||0)||'—');
     const cnt=d.querySelector('.cnt');
     if(cnt.textContent!==count)cnt.textContent=count;
@@ -5049,10 +5136,11 @@ function craft(r){
     subtitle('Fence boosted: battery backup installed — live through blackouts.','#66eaff',3); return;
   }
   if(r.out==='converter'){
+    // every craft grants a portable Industrial Converter component (needed
+    // by the Room Leaper and future industrial recipes) — the FIRST one
+    // additionally unlocks the industrial tier and places the forge
+    addItem('converter',1);
     if(game.craftTier>=2){
-      // industrial tier already online: further converters are portable
-      // COMPONENTS (Room Leaper ingredient) instead of placed forges
-      addItem('converter',1);
       subtitle('Industrial Converter fabricated as a component.','#ffd76a',3);
       AudioEngine.clank&&AudioEngine.clank();
     } else {
@@ -5063,11 +5151,10 @@ function craft(r){
       AudioEngine.weld(); AudioEngine.chime();
     }
   } else if(r.out==='leaper'){
-    // installs directly into the elevator panel
-    game.leaperInstalled=true;
-    subtitle('ROOM LEAPER installed into the elevator panel. Floor Preview Mode online. Chaos noted.','#a04ae8',5);
-    AudioEngine.chime(); AudioEngine.staticBurst(0.6,0.06);
-    if(typeof artRefreshElevPanel==='function')artRefreshElevPanel();
+    // a carried tool now — bring it to the elevator panel to install it
+    addItem('leaper',1);
+    subtitle('ROOM LEAPER assembled. Bring it to the elevator panel and interact to install.','#a04ae8',4.5);
+    AudioEngine.chime();
   } else {
     addItem(r.out,r.n);
     if(r.out==='shotgun')subtitle('Pipe Shotgun assembled. Point away from face.','#ffd76a',3);
@@ -5099,8 +5186,17 @@ function setPaused(p){
 function onKeyDown(code){
   if(game.state==='menu'||game.state==='dead')return;
   switch(code){
-    case 'Digit1':case 'Digit2':case 'Digit3':case 'Digit4':case 'Digit5':case 'Digit6':
-      player.slot=+code.slice(5)-1; refreshHotbar(); break;
+    case 'Digit1':case 'Digit2':case 'Digit3':case 'Digit4':case 'Digit5':case 'Digit6':{
+      const i=+code.slice(5)-1;
+      // re-pressing the already-selected GUN slot toggles shotgun <-> rifle
+      // when both are owned — one slot, two guns
+      if(player.slot===i&&SLOTS[i]==='gun'&&inv.owned.shotgun&&inv.owned.rifle){
+        player.gunKind=player.gunKind==='rifle'?'shotgun':'rifle';
+        subtitle('Switched to '+ITEMS[player.gunKind].name,'#ffd76a',1.3);
+        AudioEngine.click(700,0.1);
+      }
+      player.slot=i; refreshHotbar(); break;
+    }
     case 'KeyR': if(!player.carrying)reloadWeapon(); break;
     case 'KeyF': if(Input.keys.ShiftLeft){} tryToggleFlashOrGrab(); break;
     case 'KeyG': tryGrabCrate(); break;
@@ -5169,7 +5265,7 @@ function restart(){
     floodStage:0,floodClock:0,floodDepth:0,baseFloodDepth:0,liminal:false,
     apoVisited:false,lootBias:null,chaosLevel:0,leaperInstalled:false});
   Object.assign(player,{hp:CFG.hpMax,stamina:CFG.staminaMax,fear:0,slot:0,shotgunLoaded:2,rifleLoaded:0,
-    flashlight:false,nvg:false,carrying:null,x:0,z:0,slipping:0});
+    flashlight:false,nvg:false,carrying:null,x:0,z:0,slipping:0,gunKind:null});
   inv.counts={}; inv.owned={crowbar:true};
   addItem('cloth',1);
   game.worldSeed=(Math.random()*1e9)|0;
@@ -5212,6 +5308,7 @@ function tick(now){
     if(typeof generatorFxUpdate==='function')generatorFxUpdate(dt);
     if(typeof nezerUpdate==='function')nezerUpdate(dt);
     if(typeof safetyDoorUpdate==='function')safetyDoorUpdate(dt);
+    if(typeof leaperPanelUpdate==='function')leaperPanelUpdate(dt);
   }
   updateLights(dt);
   updateHUD(dt);
