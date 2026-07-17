@@ -57,8 +57,8 @@
   .btn.danger:hover{background:#a04ae8;color:#100616;box-shadow:0 0 18px rgba(160,74,232,0.4);}
   .btn:disabled{opacity:0.4;cursor:not-allowed;border-color:#3a4350;color:#6a7684;}
   .btn:disabled:hover{background:#1a2430;box-shadow:none;transform:none;}
-  #continueBtn{position:relative;}
-  #continueBtn .contSub{display:block;font-size:0.5em;letter-spacing:0.12em;color:#7d8ea0;margin-top:3px;}
+  #continueBtn,#guidedBtn{position:relative;}
+  .contSub{display:block;font-size:0.5em;letter-spacing:0.12em;color:#7d8ea0;margin-top:3px;}
   /* cheats panel */
   #cheatOverlay .panel{min-width:460px;}
   .cheatRow{display:flex;flex-direction:column;gap:2px;background:#101720;border:1px solid #2c3a48;
@@ -198,6 +198,46 @@
     box-shadow:inset 0 0 180px rgba(0,60,0,0.9);}
   .scanlines{position:fixed;inset:0;pointer-events:none;z-index:30;opacity:0.35;
     background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,0.16) 2px 3px);}
+  /* ===== GUIDE: mission log, compass, toasts, tutorial ===== */
+  #objLog{position:absolute;left:18px;top:56px;max-width:250px;display:none;pointer-events:none;
+    font-family:'Courier New',monospace;background:rgba(7,10,14,0.66);border:1px solid #222c38;
+    border-left:3px solid #ffd76a;border-radius:4px;padding:8px 11px;}
+  #objLog .objHead{font-size:0.56em;letter-spacing:0.24em;color:#5d7088;margin-bottom:3px;}
+  #objMain{font-size:0.78em;color:#ffe9b0;letter-spacing:0.04em;line-height:1.35;}
+  #objBarWrap{display:none;margin-top:6px;}
+  #objBarLabel{font-size:0.52em;letter-spacing:0.18em;color:#7d8ea0;display:block;margin-bottom:2px;}
+  #objBarTrack{height:5px;background:rgba(255,255,255,0.08);border:1px solid #26313c;border-radius:2px;overflow:hidden;}
+  #objBarFill{height:100%;background:linear-gradient(90deg,#b8952a,#ffd76a);width:0%;transition:width .3s;}
+  .objMicro{display:flex;justify-content:space-between;gap:8px;font-size:0.62em;color:#8fa3b8;margin-top:4px;
+    border-top:1px dashed #1c2530;padding-top:4px;}
+  .objMicro b{color:#cfe0ee;font-weight:600;}
+  #objHint{font-size:0.64em;color:#8fd0dc;margin-top:6px;line-height:1.4;opacity:0;transition:opacity .6s;}
+  #objHint.show{opacity:1;}
+  #compass{position:absolute;left:50%;top:44px;transform:translateX(-50%);display:none;align-items:center;gap:7px;
+    pointer-events:none;font-family:'Courier New',monospace;background:rgba(7,10,14,0.6);
+    border:1px solid #222c38;border-radius:14px;padding:3px 12px;}
+  #compArrow{display:inline-block;color:#ffd76a;font-size:0.95em;transition:transform .08s linear;
+    text-shadow:0 0 8px rgba(255,215,106,0.5);}
+  #compDist{font-size:0.6em;letter-spacing:0.14em;color:#8fa3b8;}
+  #objToast{position:fixed;top:74px;left:50%;transform:translate(-50%,-10px);z-index:60;pointer-events:none;
+    font-family:'Courier New',monospace;font-size:0.74em;letter-spacing:0.26em;color:#ffe9b0;
+    background:rgba(14,11,6,0.92);border:1px solid #6a5a2a;border-left:4px solid #ffd76a;
+    padding:7px 18px;border-radius:4px;opacity:0;transition:opacity .3s,transform .3s;}
+  #objToast.show{opacity:1;transform:translate(-50%,0);}
+  #tutBanner{position:fixed;left:50%;bottom:172px;transform:translateX(-50%);z-index:22;display:none;
+    max-width:min(560px,88vw);text-align:center;font-family:'Courier New',monospace;
+    background:rgba(7,10,14,0.85);border:1px solid #2c3a48;border-top:3px solid #8fd0dc;
+    border-radius:6px;padding:10px 16px 12px;box-shadow:0 8px 30px rgba(0,0,0,0.6);}
+  #tutBanner.fadeIn{animation:tutIn .5s ease;}
+  @keyframes tutIn{from{opacity:0;transform:translate(-50%,8px);}to{opacity:1;transform:translate(-50%,0);}}
+  #tutStepNo{font-size:0.56em;letter-spacing:0.3em;color:#8fd0dc;margin-bottom:4px;}
+  #tutText{font-size:0.8em;color:#cfe0ee;line-height:1.45;}
+  #tutSkip{margin-top:8px;pointer-events:auto;background:#101720;border:1px solid #46586a;color:#8fa3b8;
+    font-family:inherit;font-size:0.62em;letter-spacing:0.2em;padding:5px 14px;border-radius:4px;cursor:pointer;}
+  #tutSkip:hover{border-color:#8fd0dc;color:#cfe0ee;}
+  body.mobile #objLog{top:186px;max-width:200px;font-size:0.92em;}
+  body.mobile #tutBanner{bottom:214px;}
+  body.mobile #objToast{top:100px;}
   /* cinematic color grade: soft vignette + faint cool-shadow / warm-highlight */
   #grade{position:fixed;inset:0;pointer-events:none;z-index:8;display:none;
     background:radial-gradient(ellipse at 50% 46%,rgba(0,0,0,0) 52%,rgba(4,6,10,0.5) 100%),
@@ -314,6 +354,14 @@
   <div id="floorLabel">FLOOR B1</div>
   <div id="dayLabel">DAY 1</div>
   <div id="raceLabel"></div>
+  <div id="objLog">
+    <div class="objHead">CURRENT OBJECTIVE</div>
+    <div id="objMain">—</div>
+    <div id="objBarWrap"><span id="objBarLabel"></span><div id="objBarTrack"><div id="objBarFill"></div></div></div>
+    <div id="objMicroList"></div>
+    <div id="objHint"></div>
+  </div>
+  <div id="compass"><span id="compArrow">▲</span><span id="compDist"></span></div>
   <div id="crosshair">+</div>
   <div id="prompt"></div>
   <div id="progress"></div>
@@ -354,13 +402,15 @@
       <div><b>Q</b> medkit · <b>V</b> coffee · <b>F5</b> save</div>
       <div><b>M</b> elevator menu · <b>I</b> inventory</div>
       <div><b>1–6</b> equipment · <b>H</b> help · <b>ESC</b> pause</div>
+      <div><b>T</b> skip tutorial</div>
     </div>
     <div class="modeRow">
       <div class="modeBtn active" id="modePC"><div class="mbTitle">PC MODE</div><div class="mbSub">KEYBOARD · MOUSE</div></div>
       <div class="modeBtn" id="modeMobile"><div class="mbTitle">MOBILE MODE</div><div class="mbSub">TOUCHSCREEN · SIMPLIFIED</div></div>
     </div>
     <div class="menuBtns">
-      <button class="btn" id="startBtn">CLOCK IN</button>
+      <button class="btn" id="startBtn">QUICK START</button>
+      <button class="btn ghost" id="guidedBtn">GUIDED START<span class="contSub">orientation + hints</span></button>
       <button class="btn ghost" id="continueBtn" style="display:none">CONTINUE<span class="contSub"></span></button>
       <button class="btn danger" id="cheatBtn">CHEATS</button>
     </div>
@@ -380,6 +430,12 @@
 
 <div id="saveToast"></div>
 <div id="cheatHUD"></div>
+<div id="objToast"></div>
+<div id="tutBanner">
+  <div id="tutStepNo">ORIENTATION 1 / 6</div>
+  <div id="tutText"></div>
+  <button id="tutSkip">SKIP ORIENTATION [T]</button>
+</div>
 <div id="overrideFlash"></div>
 <div id="overrideText"><div class="otBig">⚠ OVERRIDE ⚠</div><div class="otSub"></div></div>
 
@@ -1156,6 +1212,8 @@ function buildFloor(floorIdx){
 
   updateLightingMood(true);
   el('floorLabel').textContent='FLOOR B'+floorIdx+' — '+biome;
+  // guidance layer: hazard-stripe path + signage glow for the new layout
+  if(typeof guideOnFloorBuilt==='function')guideOnFloorBuilt();
 }
 
 // carve a rectangular walled room, returns bounds
@@ -5144,6 +5202,7 @@ function saveGame(){
       gunKind:player.gunKind, shotgunLoaded:player.shotgunLoaded, rifleLoaded:player.rifleLoaded,
     },
     inv:{ counts:Object.assign({},inv.counts), owned:Object.assign({},inv.owned) },
+    guide:(typeof guideSerialize==='function')?guideSerialize():null,   // objective/micro progress
   };
   try{ localStorage.setItem(SAVE_KEY,JSON.stringify(snap)); }
   catch(e){ subtitle('Archive failed — storage unavailable.','#ff6655',3); return false; }
@@ -5178,10 +5237,12 @@ function continueGame(){
     shotgunLoaded:snap.player.shotgunLoaded||0, rifleLoaded:snap.player.rifleLoaded||0,
     flashlight:false,nvg:false,carrying:null,x:0,z:0,slipping:0});
   // rebuild the exact floor: forcing the saved biome + preserved seed reproduces
-  // the same deterministic layout
+  // the same deterministic layout. Continuing NEVER re-runs the tutorial.
+  if(typeof guideReset==='function')guideReset(false);
   game.forcedBiome=snap.game.biome||null;
   buildFloor(game.floor);
   placePlayerAtSpawn();
+  if(typeof guideRestore==='function'&&snap.guide)guideRestore(snap.guide);
   refreshHotbar();
   if(typeof updateLightingMood==='function')updateLightingMood(true);
   if(typeof refreshCheatHUD==='function')refreshCheatHUD();
@@ -5242,6 +5303,428 @@ function refreshCheatHUD(){
   const active=CHEAT_DEFS.filter(c=>cheats[c.key]).map(c=>c.label);
   if(active.length){ w.style.display='block'; w.textContent='CHEATS: '+active.join(' · '); }
   else w.style.display='none';
+}
+
+// ============================================================================
+//  GUIDE  —  tutorial, objectives, hints, compass, world guidance, music
+//  One module owns everything that TELLS the player what to do: the mission
+//  log, the compass, the onboarding steps, idle hints, and the dynamic score.
+//  Deadpan SCP register throughout. All hooks are read-only polls of existing
+//  game state — nothing here changes how the store behaves.
+// ============================================================================
+const Guide={
+  running:false,                          // objectives active this run
+  tut:null,                               // {step, t} while the tutorial runs
+  obj:{label:'',target:null,bar:-1,barLabel:''},
+  micro:[],                               // run-scoped tasks
+  idleT:0, hintShownT:0, hintLevel:0,
+  moveAcc:0, yawAcc:0, lastYaw:0, lastX:0, lastZ:0,
+  sawInteract:false, sawSwing:false,
+  batPrev:0, suppressToastUntil:0,
+  domT:0, cueT:0, fx:[], stripes:0,
+};
+
+// ---- tutorial ---------------------------------------------------------------
+const TUT_STEPS=[
+  {id:'move',   text:'Orientation 1 — MOVEMENT. W A S D to walk (arrow pad on touch). Cover a few meters.',
+    done:()=>Guide.moveAcc>4},
+  {id:'look',   text:'Orientation 2 — OBSERVATION. ◄ ► arrow keys to turn (drag the right half on touch). Sweep the aisle.',
+    done:()=>Guide.yawAcc>1.4},
+  {id:'interact',text:'Orientation 3 — INTERACTION. Hold E on anything that prompts (hold USE on touch). Paper glints white on the floor.',
+    done:()=>Guide.sawInteract},
+  {id:'swing',  text:'Orientation 4 — THE CROWBAR. LEFT-CLICK to swing it (tap the left half on touch). Standard issue. Do not lose it.',
+    done:()=>Guide.sawSwing},
+  {id:'generator',text:'Orientation 5 — POWER. Locate the GENERATOR ROOM. Yellow signage, north-west corner. Walk to it.',
+    done:()=>typeof generatorInfo!=='undefined'&&generatorInfo&&dist2d(player.x,player.z,generatorInfo.x,generatorInfo.z)<5,
+    target:()=>generatorInfo},
+  {id:'elevator',text:'Orientation 6 — EGRESS. The FREIGHT ELEVATOR is the only exit. It only goes down. Walk to it.',
+    done:()=>typeof elevatorInfo!=='undefined'&&elevatorInfo&&dist2d(player.x,player.z,elevatorInfo.x,elevatorInfo.z)<3.4,
+    target:()=>elevatorInfo},
+];
+function tutorialDoneFlag(){ try{ return localStorage.getItem('iw_tut_done')==='1'; }catch(e){ return false; } }
+function tutorialMarkDone(){ try{ localStorage.setItem('iw_tut_done','1'); }catch(e){}
+  if(typeof refreshStartButtons==='function')refreshStartButtons(); }
+function tutorialStart(){
+  Guide.tut={step:0,t:0};
+  Guide.moveAcc=0; Guide.yawAcc=0; Guide.sawInteract=false; Guide.sawSwing=false;
+  tutShowStep();
+}
+function tutShowStep(){
+  const b=el('tutBanner'); if(!b)return;
+  const s=TUT_STEPS[Guide.tut.step];
+  b.style.display='block';
+  el('tutStepNo').textContent='ORIENTATION '+(Guide.tut.step+1)+' / '+TUT_STEPS.length;
+  el('tutText').textContent=s.text;
+  b.classList.remove('fadeIn'); void b.offsetWidth; b.classList.add('fadeIn');   // retrigger fade-in
+  AudioEngine.staticBurst&&AudioEngine.staticBurst(0.15,0.02);
+}
+function tutorialSkip(){
+  if(!Guide.tut)return;
+  Guide.tut=null; const b=el('tutBanner'); if(b)b.style.display='none';
+  tutorialMarkDone();
+  objToast('ORIENTATION WAIVED.');
+  AudioEngine.click&&AudioEngine.click(500,0.1);
+}
+function tutorialTick(dt){
+  const t=Guide.tut; if(!t)return;
+  t.t+=dt;
+  const s=TUT_STEPS[t.step];
+  let ok=false; try{ ok=s.done(); }catch(e){}
+  if(ok){
+    AudioEngine.confirm&&AudioEngine.confirm();
+    objToast('TASK COMPLETE.');
+    t.step++;
+    if(t.step>=TUT_STEPS.length){
+      Guide.tut=null; const b=el('tutBanner'); if(b)b.style.display='none';
+      tutorialMarkDone();
+      subtitle('Orientation complete. Your shift has already started.','#8fe0b0',4);
+    } else tutShowStep();
+  }
+}
+
+// ---- micro-objectives -------------------------------------------------------
+function microDefs(){ return [
+  {id:'bats',  label:'Collect 3 batteries',        max:3, acc:0, done:false,
+    reward:{id:'medkit',n:1,name:'First-Aid Kit'}},
+  {id:'genloc',label:'Locate the generator room',  max:1, acc:0, done:false,
+    prog:()=>(typeof generatorInfo!=='undefined'&&generatorInfo&&dist2d(player.x,player.z,generatorInfo.x,generatorInfo.z)<5)?1:0,
+    reward:{id:'battery',n:1,name:'High-Grade Battery'}},
+  {id:'race',  label:'Win a generator repair race',max:1, acc:0, done:false,
+    prog:()=>(typeof vaultOutcome==='function'&&vaultOutcome()==='PLAYER')?1:0,
+    reward:{id:'bolts',n:4,name:'Hardware Bolts ×4'}},
+  {id:'b3',    label:'Reach floor B3',             max:1, acc:0, done:false,
+    prog:()=>game.floor>=3?1:0,
+    reward:{id:'shells',n:3,name:'Shotgun Shells ×3'}},
+  {id:'leap',  label:'Assemble the Room Leaper',   max:1, acc:0, done:false,
+    prog:()=>(game.leaperInstalled||(inv.counts.leaper||0)>0)?1:0,
+    reward:{id:'medkit',n:1,name:'First-Aid Kit'}},
+];}
+function microTick(){
+  // battery counting: track every battery that ENTERS the inventory
+  const cur=inv.counts.battery||0;
+  if(cur>Guide.batPrev){ const m=Guide.micro.find(m=>m.id==='bats');
+    if(m&&!m.done)m.acc=Math.min(m.max,m.acc+(cur-Guide.batPrev)); }
+  Guide.batPrev=cur;
+  Guide.micro.forEach(m=>{
+    if(m.done)return;
+    if(m.prog)m.acc=Math.max(m.acc,m.prog());
+    if(m.acc>=m.max){
+      m.done=true;
+      addItem(m.reward.id,m.reward.n);
+      AudioEngine.confirm&&AudioEngine.confirm();
+      objToast('TASK COMPLETE — ISSUED: '+m.reward.name.toUpperCase());
+    }
+  });
+}
+
+// ---- objective resolution ---------------------------------------------------
+function setObjective(label,target,bar,barLabel){
+  const o=Guide.obj;
+  const changed=label!==o.label;
+  o.label=label; o.target=target||null; o.bar=(bar==null?-1:bar); o.barLabel=barLabel||'';
+  if(changed&&game.time>Guide.suppressToastUntil&&!Guide.tut){
+    objToast('OBJECTIVE UPDATED.');
+    Guide.hintLevel=0; Guide.idleT=0;
+  }
+}
+function resolveObjective(){
+  if(Guide.tut){
+    const s=TUT_STEPS[Guide.tut.step];
+    const tgt=s.target?s.target():null;
+    setObjective(s.text.split('—')[1]?('Orientation: '+s.id.toUpperCase()):s.text, tgt, (Guide.tut.step)/TUT_STEPS.length, 'ORIENTATION');
+    return;
+  }
+  if(game.power==='OFF'){
+    setObjective('Restore power.', generatorInfo,
+      1-clamp((game.repairLeft||0)/CFG.repairWindow,0,1), 'CREW REPAIR INBOUND');
+    return;
+  }
+  if(game.panelBroken){
+    setObjective('Panel destroyed — await repair or force descent.', elevatorInfo,
+      1-clamp((game.panelRepair||0)/42,0,1), 'EMERGENCY REPAIR');
+    return;
+  }
+  if(typeof nezer!=='undefined'&&nezer&&nezer.ent&&nezer.ent.freed){
+    setObjective('Evacuate the floor. Contact is fatal.', elevatorInfo, -1, '');
+    return;
+  }
+  const bm=Guide.micro.find(m=>m.id==='bats'&&!m.done);
+  setObjective('Proceed to the freight elevator. Descend.', elevatorInfo,
+    bm?bm.acc/bm.max:-1, bm?('BATTERIES '+bm.acc+'/'+bm.max):'');
+}
+
+// ---- popups / hints ---------------------------------------------------------
+let _objToastT=null;
+function objToast(text){
+  const t=el('objToast'); if(!t)return;
+  t.textContent=text;
+  t.classList.remove('show'); void t.offsetWidth; t.classList.add('show');
+  clearTimeout(_objToastT); _objToastT=setTimeout(()=>t.classList.remove('show'),2400);
+}
+function currentHint(strong){
+  if(elevatorInfo&&elevatorInfo.rearm&&dist2d(player.x,player.z,elevatorInfo.x,elevatorInfo.z)<4)
+    return 'Hint: Step fully out of the cabin, then return to the panel.';
+  if(game.power==='OFF')return strong?
+    'You must reach the generator room — yellow signage, north-west corner — and hold E to override the repair.':
+    'Hint: Repair the generator to restore power.';
+  if(game.panelBroken)return strong?
+    'The panel is destroyed. Hold E on it to force an emergency descent, or survive until repair completes.':
+    'Hint: The elevator panel is destroyed — wait for repair or force descent.';
+  return strong?
+    'The freight elevator is behind the marked doorway — follow the compass arrow and the hazard stripes on the floor.':
+    'Hint: The elevator is your way out. Follow the hazard stripes.';
+}
+function hintTick(dt){
+  // idle = barely moving, no overlay, not in the elevator menu
+  const moved=Math.hypot(player.x-Guide.lastX,player.z-Guide.lastZ);
+  if(moved>0.04||Guide.tut)Guide.idleT=0; else Guide.idleT+=dt;
+  const h=el('objHint'); if(!h)return;
+  if(Guide.idleT>75&&Guide.hintLevel<2){ Guide.hintLevel=2; h.textContent=currentHint(true);
+    h.classList.add('show'); AudioEngine.staticBurst&&AudioEngine.staticBurst(0.2,0.02); Guide.hintShownT=game.time; }
+  else if(Guide.idleT>32&&Guide.hintLevel<1){ Guide.hintLevel=1; h.textContent=currentHint(false);
+    h.classList.add('show'); Guide.hintShownT=game.time; }
+  if(h.classList.contains('show')&&Guide.idleT<1&&game.time-Guide.hintShownT>4)h.classList.remove('show');
+}
+
+// ---- compass ----------------------------------------------------------------
+function compassTick(){
+  const c=el('compass'); if(!c)return;
+  const t=Guide.obj.target;
+  if(!t||game.state!=='play'){ c.style.display='none'; return; }
+  c.style.display='flex';
+  const dx=t.x-player.x, dz=t.z-player.z;
+  const deg=-(Math.atan2(dx,dz)-player.yaw)*180/Math.PI;
+  el('compArrow').style.transform='rotate('+deg.toFixed(1)+'deg)';
+  el('compDist').textContent=Math.round(Math.hypot(dx,dz))+'m';
+}
+
+// ---- mission-log DOM (throttled) ---------------------------------------------
+function guideDom(){
+  const log=el('objLog'); if(!log)return;
+  const show=(game.state==='play'||game.state==='transit')&&Guide.running;
+  log.style.display=show?'block':'none';
+  const tb=el('tutBanner'); if(tb&&!Guide.tut)tb.style.display='none';
+  if(!show)return;
+  el('objMain').textContent=Guide.obj.label;
+  const wrap=el('objBarWrap');
+  if(Guide.obj.bar>=0){ wrap.style.display='block';
+    el('objBarFill').style.width=(clamp(Guide.obj.bar,0,1)*100).toFixed(1)+'%';
+    el('objBarLabel').textContent=Guide.obj.barLabel; }
+  else wrap.style.display='none';
+  // pending micro tasks (max 3 lines, done ones drop off)
+  const list=el('objMicroList');
+  const pend=Guide.micro.filter(m=>!m.done).slice(0,3);
+  const html=pend.map(m=>`<div class="objMicro"><span>${m.label}</span><b>${m.max>1?(m.acc+'/'+m.max):'&nbsp;'}</b></div>`).join('');
+  if(list._h!==html){ list._h=html; list.innerHTML=html; }
+}
+
+// ---- world guidance: floor stripes + signage glow -----------------------------
+let _stripeTex=null;
+function _hazardStripeTex(){
+  if(_stripeTex&&_stripeTex.image)return _stripeTex;
+  const c=document.createElement('canvas'); c.width=96; c.height=40;
+  const x=c.getContext('2d');
+  x.fillStyle='#b8952a'; x.fillRect(0,0,96,40);
+  x.fillStyle='#15130c';
+  for(let i=-1;i<8;i++){ x.beginPath(); x.moveTo(i*20,0); x.lineTo(i*20+10,0);
+    x.lineTo(i*20+10+40,40); x.lineTo(i*20+40,40); x.fill(); }
+  for(let i=0;i<40;i++){ x.fillStyle=`rgba(10,8,4,${Math.random()*0.25})`;
+    x.fillRect(Math.random()*96,Math.random()*40,3,2); }
+  _stripeTex=new THREE.CanvasTexture(c); return _stripeTex;
+}
+// BFS a walkable path front-of-store -> elevator door, drop worn hazard decals
+function buildGuideStripes(){
+  Guide.stripes=0;
+  if(!elevatorInfo)return;
+  const [sx,sz]=worldToCell(0,HALF_D-6);                       // front-center
+  const [ex,ez]=worldToCell(elevatorInfo.x,elevatorInfo.z);
+  const prev=new Int32Array(GRID_W*GRID_D).fill(-1);
+  const q=[gi(sx,sz)]; prev[gi(sx,sz)]=gi(sx,sz);
+  let found=-1;
+  while(q.length){
+    const cur=q.shift(); const cx=cur%GRID_W, cz=(cur/GRID_W)|0;
+    if(Math.abs(cx-ex)+Math.abs(cz-ez)<3){ found=cur; break; }
+    for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const nx=cx+dx,nz=cz+dz;
+      if(nx<1||nz<1||nx>=GRID_W-1||nz>=GRID_D-1)continue;
+      const ni=gi(nx,nz);
+      if(prev[ni]!==-1||cellBlocked(nx,nz))continue;
+      prev[ni]=cur; q.push(ni);
+    }
+  }
+  if(found<0)return;
+  // walk back, dropping a decal every 4 cells, oriented along the path
+  const path=[]; let cur=found;
+  while(prev[cur]!==cur){ path.push(cur); cur=prev[cur]; }
+  const mat=new THREE.MeshBasicMaterial({map:_hazardStripeTex(),transparent:true,opacity:0.42,depthWrite:false});
+  disposables.push(mat);
+  for(let i=4;i<path.length-4;i+=4){
+    const ci=path[i], nx=path[i-1];
+    const [wx,wz]=cellToWorld(ci%GRID_W,(ci/GRID_W)|0);
+    const [wx2,wz2]=cellToWorld(nx%GRID_W,(nx/GRID_W)|0);
+    const d=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.96,0.34)),mat);
+    d.rotation.x=-Math.PI/2;
+    d.rotation.z=Math.atan2(wx2-wx,wz2-wz)+Math.PI/2;
+    d.position.set(wx,0.025,wz);
+    world.add(d); Guide.stripes++;
+  }
+}
+// pulsing glow accents + flicker planes at the two signposted doorways
+function buildGuideFx(){
+  Guide.fx=[];
+  const mk=(x,z,color)=>{
+    const m=new THREE.Mesh(geo(new THREE.PlaneGeometry(2.6,0.16)),
+      new THREE.MeshBasicMaterial({color,transparent:true,opacity:0.3,depthWrite:false}));
+    disposables.push(m.material);
+    m.position.set(x,3.35,z); world.add(m);
+    Guide.fx.push({m,phase:Math.random()*6});
+  };
+  if(typeof generatorInfo!=='undefined'&&generatorInfo){
+    const [dx,dz]=cellToWorld(7,11); mk(dx+0.5,dz+0.58,0xffd76a);
+  }
+  if(elevatorInfo)mk(elevatorInfo.x-4.2,elevatorInfo.z+0.2,0xffd76a);
+}
+function guideFxTick(){
+  for(const f of Guide.fx){
+    // slow pulse + occasional hard flicker — "the building points, reluctantly"
+    const pulse=0.22+0.14*Math.sin(game.time*1.6+f.phase);
+    f.m.material.opacity=(Math.random()<0.03)?0.05:pulse;
+  }
+}
+
+// ---- proximity audio cues -----------------------------------------------------
+function guideCueTick(dt){
+  Guide.cueT-=dt;
+  const t=Guide.obj.target;
+  if(!t||Guide.cueT>0)return;
+  const d=dist2d(player.x,player.z,t.x,t.z);
+  if(d<9){ Guide.cueT=4;
+    if(game.power==='OFF')AudioEngine.click&&AudioEngine.click(280,0.05);       // generator: low knock
+    else AudioEngine.click&&AudioEngine.click(1250,0.04);                        // elevator: faint ping
+  }
+}
+
+// ============================================================================
+//  MUSIC DIRECTOR — generative industrial score, three dynamic layers
+// ============================================================================
+const MusicDirector={
+  started:false, n:{}, t:0, metalT:8,
+  start(){
+    if(this.started||!AudioEngine.ready)return;
+    const c=AudioEngine.ctx, out=AudioEngine.master;
+    const bed=(type,freq,filt)=>{ const o=c.createOscillator(),g=c.createGain(),f=c.createBiquadFilter();
+      o.type=type; o.frequency.value=freq; f.type='lowpass'; f.frequency.value=filt;
+      g.gain.value=0; o.connect(f).connect(g).connect(out); o.start(); return {o,g}; };
+    // calm: paired detuned low drones — the building breathing
+    this.n.d1=bed('sine',54,220); this.n.d2=bed('sine',54.7,220);
+    this.n.pad=bed('triangle',162.5,500);
+    // tension: detuned saws, pulsed in update()
+    this.n.t1=bed('sawtooth',110,340); this.n.t2=bed('sawtooth',110.8,340);
+    // objective shimmer: high detuned pair + narrow noise band, "distorted air"
+    this.n.s1=bed('triangle',523.3,3200); this.n.s2=bed('triangle',527.1,3200);
+    const ns=c.createBufferSource(),ng=c.createGain(),nf=c.createBiquadFilter();
+    ns.buffer=AudioEngine._noiseBuf; ns.loop=true; nf.type='bandpass'; nf.frequency.value=2400; nf.Q.value=9;
+    ng.gain.value=0; ns.connect(nf).connect(ng).connect(out); ns.start();
+    this.n.shN={g:ng};
+    this.started=true;
+  },
+  oneShotMetal(tense){
+    if(!AudioEngine.ready)return; const c=AudioEngine.ctx,t=c.currentTime;
+    if(Math.random()<0.3){                                   // distant low boom
+      const o=c.createOscillator(),g=c.createGain();
+      o.type='sine'; o.frequency.setValueAtTime(44,t); o.frequency.exponentialRampToValueAtTime(28,t+1.2);
+      AudioEngine._env(g,t,0.05,tense?0.06:0.04,1.4); o.connect(g).connect(AudioEngine.master); o.start(t); o.stop(t+1.6);
+    } else {                                                  // metallic scrape/ping
+      const s=c.createBufferSource(),g=c.createGain(),f=c.createBiquadFilter();
+      s.buffer=AudioEngine._noiseBuf; f.type='bandpass'; f.frequency.value=300+Math.random()*900; f.Q.value=14;
+      AudioEngine._env(g,t,0.01,tense?0.05:0.03,0.6+Math.random()*0.5);
+      s.connect(f).connect(g).connect(AudioEngine.master); s.start(t); s.stop(t+1.3);
+    }
+  },
+  update(dt){
+    if(!this.started){ if(AudioEngine.ready&&(game.state==='play'||game.state==='transit'))this.start(); return; }
+    this.t+=dt;
+    const inWorld=game.state==='play'||game.state==='transit';
+    const paused=game.paused||!inWorld;
+    // danger: hostiles close, Nezer awake, broken panel, or a night blackout
+    let danger=false;
+    if(inWorld&&!paused){
+      danger=(typeof nezer!=='undefined'&&nezer&&nezer.ent&&(nezer.ent.active||nezer.ent.freed))
+        ||game.panelBroken||(game.power==='OFF'&&game.shift==='NIGHT');
+      if(!danger)for(const e of enemies){ if(!e.dead&&dist2d(e.x,e.z,player.x,player.z)<13){ danger=true; break; } }
+    }
+    const objNear=inWorld&&!paused&&Guide.obj.target&&dist2d(player.x,player.z,Guide.obj.target.x,Guide.obj.target.z)<9;
+    // layer targets (all deliberately quiet — a score, not a siren)
+    const tgt={
+      d1:paused?0:0.028, d2:paused?0:0.024, pad:paused?0:(0.006+0.004*Math.sin(this.t*0.23)),
+      t1:danger?0.03+0.018*Math.max(0,Math.sin(this.t*4.4)):0,     // pulsing metallic tension
+      t2:danger?0.026+0.014*Math.max(0,Math.sin(this.t*4.4+0.4)):0,
+      s1:objNear?0.010:0, s2:objNear?0.009:0,
+    };
+    const k=Math.min(1,dt*1.4);
+    for(const key of ['d1','d2','pad','t1','t2','s1','s2'])
+      this.n[key].g.gain.value+=(tgt[key]-this.n[key].g.gain.value)*k;
+    this.n.shN.g.gain.value+=((objNear?0.006:0)-this.n.shN.g.gain.value)*k;
+    // sparse one-shot ambience, denser when tense
+    if(inWorld&&!paused){ this.metalT-=dt;
+      if(this.metalT<=0){ this.metalT=(danger?4:10)+Math.random()*(danger?5:12); this.oneShotMetal(danger); } }
+  },
+};
+
+// ---- lifecycle ----------------------------------------------------------------
+function guideReset(withTutorial){
+  Guide.running=true;
+  Guide.micro=microDefs();
+  Guide.batPrev=inv.counts.battery||0;
+  Guide.obj={label:'',target:null,bar:-1,barLabel:''};
+  Guide.idleT=0; Guide.hintLevel=0; Guide.moveAcc=0; Guide.yawAcc=0;
+  Guide.sawInteract=false; Guide.sawSwing=false;
+  Guide.suppressToastUntil=game.time+2;
+  const h=el('objHint'); if(h)h.classList.remove('show');
+  if(withTutorial)tutorialStart();
+  else { Guide.tut=null; const b=el('tutBanner'); if(b)b.style.display='none'; }
+}
+function guideSerialize(){
+  return { micro:Guide.micro.map(m=>({id:m.id,acc:m.acc,done:m.done})) };
+}
+function guideRestore(s){
+  if(!s||!s.micro)return;
+  s.micro.forEach(sm=>{ const m=Guide.micro.find(x=>x.id===sm.id);
+    if(m){ m.acc=sm.acc; m.done=sm.done; } });
+}
+// per-floor: repaint the guidance layer for the new layout
+function guideOnFloorBuilt(){
+  if(!Guide.running)return;
+  Guide.suppressToastUntil=game.time+2;
+  buildGuideStripes();
+  buildGuideFx();
+}
+// called EVERY frame from tick, in every state — internally state-aware
+function guideFrame(dt){
+  MusicDirector.update(dt);
+  if(!Guide.running)return;
+  if(game.state!=='play'||game.paused){ guideDom(); compassTick(); return; }
+  // input accumulators for the tutorial
+  const dy=Math.abs(player.yaw-Guide.lastYaw); Guide.yawAcc+=(dy<1?dy:0); Guide.lastYaw=player.yaw;
+  Guide.moveAcc+=Math.hypot(player.x-Guide.lastX,player.z-Guide.lastZ);
+  if(player.interactT>0.35)Guide.sawInteract=true;
+  if((typeof VM!=='undefined'&&VM.swing)||((player.meleeCd||0)>0.3))Guide.sawSwing=true;
+  tutorialTick(dt);
+  microTick();
+  resolveObjective();
+  hintTick(dt);
+  guideCueTick(dt);
+  guideFxTick();
+  compassTick();
+  Guide.lastX=player.x; Guide.lastZ=player.z;
+  Guide.domT-=dt; if(Guide.domT<=0){ Guide.domT=0.25; guideDom(); }
+}
+// menu button states: once orientation is complete it never auto-shows again —
+// GUIDED START relabels to a replay option
+function refreshStartButtons(){
+  const g=el('guidedBtn'); if(!g)return;
+  if(tutorialDoneFlag()){ g.classList.add('ghost'); g.innerHTML='REPLAY TUTORIAL'; }
+  else { g.classList.remove('ghost'); g.innerHTML='GUIDED START<span class="contSub">orientation + hints</span>'; }
 }
 
 // ============================================================================
@@ -6266,6 +6749,7 @@ function onKeyDown(code){
       }
       break;
     case 'F5': if(typeof saveGame==='function')saveGame(); break;   // quicksave
+    case 'KeyT': if(typeof tutorialSkip==='function')tutorialSkip(); break; // skip orientation
   }
 }
 function craftToggle(){ el('craftOverlay').style.display==='flex'?closeOverlays():openCraft(); }
@@ -6312,6 +6796,7 @@ function restart(){
   inv.counts={}; inv.owned={crowbar:true};
   addItem('cloth',1);
   game.worldSeed=(Math.random()*1e9)|0;
+  if(typeof guideReset==='function')guideReset(!!game.startGuided);  // objectives + optional tutorial
   buildFloor(1);
   placePlayerAtSpawn();
   if(typeof refreshCheatHUD==='function')refreshCheatHUD();
@@ -6331,6 +6816,7 @@ function tick(now){
   const dt=Math.min((now-lastT)/1000,0.05); lastT=now;    // fail-safe: dt cap
   Input.poll&&Input.poll();                               // stuck-key / focus-loss recovery, every frame
   if(typeof MobileUI!=='undefined'&&MobileUI.perfTick)MobileUI.perfTick(dt);   // dynamic resolution on mobile
+  if(typeof guideFrame==='function')guideFrame(dt);       // objectives / tutorial / compass / music
   if(game.state==='menu')return;
   if(game.state==='dead'||game.state==='won'){ renderer.render(scene,camera); return; }
   if(game.paused){ renderer.render(scene,camera); return; }
@@ -6400,10 +6886,21 @@ function boot(){
   el('startBtn').onclick=()=>{
     AudioEngine.init(); AudioEngine.resume();
     el('menuOverlay').style.display='none';
+    game.startGuided=false;                                            // QUICK START: no tutorial, ever
     restart();
     if(!Input.mobile){ try{canvas.requestPointerLock();}catch(_){} }   // no cursor lock on touch
     intercom('Good morning team. The store is now open. Welcome, valued customers.','opening');
   };
+  el('guidedBtn')&&(el('guidedBtn').onclick=()=>{
+    AudioEngine.init(); AudioEngine.resume();
+    el('menuOverlay').style.display='none';
+    game.startGuided=true;                                             // GUIDED START: orientation + hints
+    restart();
+    if(!Input.mobile){ try{el('cv').requestPointerLock();}catch(_){} }
+    intercom('New team member on the floor. Orientation is in progress.','opening');
+  });
+  el('tutSkip')&&(el('tutSkip').onclick=()=>{ if(typeof tutorialSkip==='function')tutorialSkip(); });
+  if(typeof refreshStartButtons==='function')refreshStartButtons();
   el('restartBtn').onclick=()=>{ restart(); el('cv').requestPointerLock(); };
   el('winRestartBtn').onclick=()=>{ restart(); el('cv').requestPointerLock(); };
   el('resumeBtn').onclick=()=>{ setPaused(false); el('cv').requestPointerLock(); };
