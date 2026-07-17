@@ -1253,7 +1253,7 @@ function buildGeneratorRoom(rng){
   const [vx,vz]=cellToWorld(x0+8,z0+2);
   const door=new THREE.Mesh(geo(new THREE.BoxGeometry(2.4,3,0.5)),MAT.vault); door.position.set(vx,1.5,vz+1.2); world.add(door);
   const box=new THREE.Mesh(geo(new THREE.BoxGeometry(2.6,2.2,2)),MAT.vault); box.position.set(vx,1.1,vz); world.add(box);
-  vaultInfo={x:vx,z:vz,door,opened:false};
+  vaultInfo={x:vx,z:vz,door,opened:false,doorY0:door.position.y};
   interactables.push({x:vx,z:vz+1.4,r:2,prompt:'Vault',dur:1.2,
     canUse:()=>vaultOutcome()==='PLAYER'&&!vaultInfo.opened,
     getPrompt:()=>vaultOutcome()==='PLAYER'?(vaultInfo.opened?'Vault (emptied)':'Open Vault [hold E]'):
@@ -3895,6 +3895,17 @@ function artOpenVaultDoor(){
   AudioEngine.clank&&AudioEngine.clank();
   vaultInfo.doorAnim={p:0,y0:vaultInfo.door.position.y};
 }
+// re-seal the vault for a repeat generator race: pop the door back into place.
+// The Golden Crowbar and the Room Leaper both consume golden battery
+// components, so one trip through the vault is rarely enough — a new
+// blackout re-arms the SAME floor's vault + battery housing.
+function artResealVaultDoor(){
+  if(!vaultInfo||!vaultInfo.door)return;
+  vaultInfo.doorAnim=null;
+  vaultInfo.door.visible=true;
+  vaultInfo.door.position.y=(typeof vaultInfo.doorY0==='number')?vaultInfo.doorY0:vaultInfo.door.position.y+3.2;
+  AudioEngine.clank&&AudioEngine.clank();
+}
 function vaultDoorAnimUpdate(dt){
   const v=vaultInfo; if(!v||!v.doorAnim||!v.door)return;
   v.doorAnim.p+=dt*0.8;
@@ -5526,6 +5537,22 @@ function updatePower(dt){
 function triggerBlackout(why){
   if(game.power==='OFF')return;
   game.power='OFF'; game.repairLeft=CFG.repairWindow;
+  // THE RACE IS REPEATABLE: once this floor's vault AND battery housing have
+  // both been fully claimed, a fresh blackout re-seals the vault and re-arms
+  // the battery housing — win the race again for another set of components.
+  // (The Golden Crowbar and the Room Leaper both need a Golden Wire Wrapped
+  // Battery, so a single win is rarely enough for both.)
+  const bhClear=typeof batteryHousing==='undefined'||!batteryHousing||batteryHousing.opened;
+  if(vaultOutcome()==='PLAYER'&&vaultInfo&&vaultInfo.opened&&bhClear){
+    resolveVault('UNRESOLVED');
+    if(typeof artResealVaultDoor==='function')artResealVaultDoor();
+    vaultInfo.opened=false;
+    if(typeof batteryHousing!=='undefined'&&batteryHousing){
+      batteryHousing.opened=false; batteryHousing.awarded=false; batteryHousing.sparked=false;
+      batteryHousing.anim=0; if(batteryHousing.lidPivot)batteryHousing.lidPivot.rotation.x=0;
+    }
+    subtitle('Emergency crews are converging again. The vault re-seals — win the race once more.','#ffd76a',4);
+  }
   intercom('We are experiencing a temporary power interruption. Please remain where you are.','creepy');
   updateLightingMood();
   el('raceLabel').style.display='block';
