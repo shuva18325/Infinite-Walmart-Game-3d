@@ -198,6 +198,45 @@
     box-shadow:inset 0 0 180px rgba(0,60,0,0.9);}
   .scanlines{position:fixed;inset:0;pointer-events:none;z-index:30;opacity:0.35;
     background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,0.16) 2px 3px);}
+  /* ===== SETTINGS ===== */
+  #settingsOverlay .panel{min-width:420px;}
+  .setRow{margin:16px 0;}
+  .setRow label{display:flex;justify-content:space-between;font-size:0.82em;color:#cfe0ee;letter-spacing:0.04em;margin-bottom:6px;}
+  .setRow label b{color:#ffd76a;font-weight:600;font-variant-numeric:tabular-nums;}
+  .setRow input[type=range]{width:100%;accent-color:#ffd76a;height:4px;}
+  .setToggleRow{display:flex;justify-content:space-between;align-items:center;margin:14px 0;
+    border-top:1px dashed #1c2530;padding-top:12px;}
+  .setToggleRow .stName{font-size:0.82em;color:#cfe0ee;}
+  .setToggleRow .stDesc{font-size:0.68em;color:#7d8ea0;margin-top:2px;}
+  .toggleSw{width:44px;height:24px;border-radius:12px;background:#1a2430;border:1px solid #33404d;
+    position:relative;cursor:pointer;flex:none;transition:background .16s,border-color .16s;}
+  .toggleSw::after{content:"";position:absolute;width:18px;height:18px;border-radius:50%;background:#8fa3b8;
+    top:2px;left:2px;transition:transform .16s,background .16s;}
+  .toggleSw.on{background:#3a2f10;border-color:#ffd76a;}
+  .toggleSw.on::after{transform:translateX(20px);background:#ffd76a;}
+  body.colorblind #hpBar{background:#e0592f;}
+  body.colorblind #stBar{background:#2f9bd6;}
+  body.colorblind #fearBar{background:#e0a02f;}
+  /* ===== SERVICE RECORD (meta-progression) ===== */
+  #recordOverlay .panel{min-width:460px;}
+  .recGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;margin:14px 0;}
+  .recStat{background:#101720;border:1px solid #2c3a48;border-radius:6px;padding:9px 12px;}
+  .recStat .rsLabel{font-size:0.6em;letter-spacing:0.16em;color:#7d8ea0;}
+  .recStat .rsVal{font-size:1.15em;color:#ffe9b0;font-variant-numeric:tabular-nums;margin-top:2px;}
+  .recEndings{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;}
+  .recEnding{font-size:0.68em;letter-spacing:0.06em;padding:5px 11px;border-radius:4px;border:1px solid #2c3a48;color:#5d6f80;}
+  .recEnding.seen{border-color:#ffd76a;color:#ffe9b0;background:rgba(255,215,106,0.08);}
+  /* ===== WIN / ending report ===== */
+  #winOverlay .panel{max-width:560px;}
+  #winEndingTag{display:inline-block;font-size:0.62em;letter-spacing:0.24em;color:#8fd0dc;
+    border:1px solid #2c4a52;border-radius:4px;padding:4px 12px;margin-bottom:10px;background:rgba(8,14,15,0.6);}
+  .winStatsGrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:14px 0;}
+  .winStatsGrid .wsCell{background:#101720;border:1px solid #2c3a48;border-radius:6px;padding:7px 6px;text-align:center;}
+  .winStatsGrid .wsLabel{font-size:0.54em;letter-spacing:0.1em;color:#7d8ea0;}
+  .winStatsGrid .wsVal{font-size:1.05em;color:#ffe9b0;font-variant-numeric:tabular-nums;}
+  #winCredits{margin-top:16px;padding-top:14px;border-top:1px dashed #2c3a48;
+    font-family:'Courier New',monospace;font-size:0.68em;letter-spacing:0.1em;color:#5d7088;line-height:2;}
+  #winCredits b{color:#8fa3b8;letter-spacing:0.16em;}
   /* ===== GUIDE: mission log, compass, toasts, tutorial ===== */
   #objLog{position:absolute;left:18px;top:56px;max-width:250px;display:none;pointer-events:none;
     font-family:'Courier New',monospace;background:rgba(7,10,14,0.66);border:1px solid #222c38;
@@ -413,6 +452,8 @@
       <button class="btn ghost" id="guidedBtn">GUIDED START<span class="contSub">orientation + hints</span></button>
       <button class="btn ghost" id="continueBtn" style="display:none">CONTINUE<span class="contSub"></span></button>
       <button class="btn danger" id="cheatBtn">CHEATS</button>
+      <button class="btn ghost" id="settingsBtn">SETTINGS</button>
+      <button class="btn ghost" id="recordBtn">SERVICE RECORD</button>
     </div>
     <p style="font-size:0.72em;color:#5d6f80;margin-bottom:0">Headphones recommended. All audio is synthesized live. Desktop + mouse required.</p>
   </div>
@@ -488,6 +529,7 @@
   <p style="color:#9db0c0">The store waits. It's good at waiting.</p>
   <div class="menuBtns"><button class="btn" id="resumeBtn">RESUME</button>
   <button class="btn ghost" id="pauseSave">SAVE GAME</button>
+  <button class="btn ghost" id="pauseSettings">SETTINGS</button>
   <button class="btn" id="pauseFind">FIND ELEVATOR</button></div></div>
 </div>
 
@@ -551,10 +593,11 @@
 <div id="winOverlay" class="overlay">
   <h1>CLOCKED OUT</h1>
   <div class="panel" style="text-align:center">
-    <p style="color:#ffe9b0;font-size:1.05em">You pass through the Gate of Escape. The intercom voice thanks you,
-    and for the first time, it sounds tired. Behind you, the store keeps its endless morning.</p>
-    <p id="winStats" style="color:#9db0c0"></p>
-    <p style="color:#5d6f80;font-size:0.8em">THE TRUE ENDING — judged worthy by the Guardian of Eterness.</p>
+    <div id="winEndingTag">THE TRUE ENDING</div>
+    <p id="winEndingText" style="color:#ffe9b0;font-size:1.05em"></p>
+    <p id="winEndingSub" style="color:#5d6f80;font-size:0.8em"></p>
+    <div class="winStatsGrid" id="winStatsGrid"></div>
+    <div id="winCredits"></div>
     <button class="btn" id="winRestartBtn">START A NEW SHIFT</button>
   </div>
 </div>
@@ -566,6 +609,52 @@
     <p id="deathStats" style="color:#9db0c0"></p>
     <p style="color:#5d6f80;font-size:0.8em">Your position has been filled. Your position was always filled.</p>
     <button class="btn" id="restartBtn">CLOCK IN AGAIN</button>
+  </div>
+</div>
+
+<!-- settings / service record sit last among game overlays so they always
+     paint on top of the pause menu (or cheats) that opened them -->
+<div id="settingsOverlay" class="overlay">
+  <div class="panel">
+    <div class="scpHeader" style="margin-bottom:10px">SCP FOUNDATION ARCHIVE · TERMINAL CONFIGURATION</div>
+    <h2>SETTINGS</h2>
+    <div class="setRow">
+      <label>MASTER VOLUME <b id="setMasterVal">70%</b></label>
+      <input type="range" id="setMaster" min="0" max="100" value="70">
+    </div>
+    <div class="setRow">
+      <label>MUSIC VOLUME <b id="setMusicVal">100%</b></label>
+      <input type="range" id="setMusic" min="0" max="200" value="100">
+    </div>
+    <div class="setRow">
+      <label>TURN / LOOK SENSITIVITY <b id="setSensVal">100%</b></label>
+      <input type="range" id="setSens" min="50" max="200" value="100">
+    </div>
+    <div class="setRow">
+      <label>FIELD OF VIEW <b id="setFovVal">74°</b></label>
+      <input type="range" id="setFov" min="60" max="100" value="74">
+    </div>
+    <div class="setToggleRow">
+      <div><div class="stName">SUBTITLES</div><div class="stDesc">Caption intercom lines and ambient narration.</div></div>
+      <div class="toggleSw on" id="setSubtitles"></div>
+    </div>
+    <div class="setToggleRow">
+      <div><div class="stName">COLORBLIND-FRIENDLY PALETTE</div><div class="stDesc">Remaps HUD bars and SCP class colors for deuteranopia/protanopia.</div></div>
+      <div class="toggleSw" id="setColorblind"></div>
+    </div>
+    <center><button class="btn closeBtn">CLOSE</button></center>
+  </div>
+</div>
+
+<div id="recordOverlay" class="overlay">
+  <div class="panel">
+    <div class="scpHeader" style="margin-bottom:10px">SCP FOUNDATION ARCHIVE · PERSONNEL FILE</div>
+    <h2>SERVICE RECORD</h2>
+    <p style="color:#8195a6;font-size:0.82em;margin:2px 0 10px">Aggregated across every shift worked on this device.</p>
+    <div class="recGrid" id="recordGrid"></div>
+    <div class="stName" style="margin-top:4px;font-size:0.72em;letter-spacing:0.1em;color:#7d8ea0">ENDINGS WITNESSED</div>
+    <div class="recEndings" id="recordEndings"></div>
+    <center><button class="btn closeBtn">CLOSE</button></center>
   </div>
 </div>
 <script>
@@ -621,7 +710,8 @@ const AudioEngine={
     if(this.ready)return;
     const AC=window.AudioContext||window.webkitAudioContext; if(!AC)return;
     this.ctx=new AC(); this.master=this.ctx.createGain();
-    this.master.gain.value=0.7; this.master.connect(this.ctx.destination);
+    this.master.gain.value=(typeof Settings!=='undefined')?Settings.master:0.7;
+    this.master.connect(this.ctx.destination);
     this.ready=true;
     this._noiseBuf=this._makeNoise(2);
     this.startBed('hum',()=>this._humBed());
@@ -1776,6 +1866,7 @@ class Enemy{
     // Crawlers keep store hours now: neutral wanderers by day, hunters at
     // night or in a blackout (their dark). Provoke one and it remembers.
     if(this.type==='crawler')return !!(game.shift==='NIGHT'||game.power==='OFF'||this.provoked);
+    if(this.type==='assembler')return true;    // the assembly line never stops
     return !!(game.shift==='NIGHT'||this.type==='specter');
   }
   hearing(){ let h=this.def().hearing*(this.hearMul||1); if(game.weather==='STORM')h*=0.8; if(game.power==='OFF')h*=1.25; return h; }
@@ -1823,6 +1914,9 @@ class Enemy{
       case 'faceless': this.brainFaceless(dt,d); return; // observed = frozen
       case 'worker': this.brainWorker(dt,d); break;
       case 'ghost': this.brainGhost(dt,d); return;
+      case 'assembler': this.brainAssembler(dt,d); break;
+      case 'echo': this.brainEcho(dt,d); return; // trail-follower: no flow-field walk
+      case 'ornament': this.brainOrnament(dt,d); break;
     }
     // liminal variant: staring pins them in place (Manager excepted)
     if(this.freezeWhenSeen&&this.type!=='manager'&&playerCanSee(this.x,this.z)){
@@ -1992,6 +2086,52 @@ class Enemy{
     if(this.canSeePlayer()||game.time-this.noiseMemT<6){ this.state='HUNT'; this.followFlow(sp); }
     else this.wanderTick(dt,sp*0.5);
   }
+  // --- THE ASSEMBLER (Level 808): a half-finished mannequin construct still
+  // moving on the belt's schedule. Damage below half HP stalls it mid-stride
+  // to weld itself back together — a real opening, but it comes back faster.
+  brainAssembler(dt,d){
+    if(this.repairT>0){ this.repairT-=dt; this.vx=0; this.vz=0;
+      if(Math.random()<dt*5){ sparkBurst(this.x,this.z); AudioEngine.zap&&AudioEngine.zap(); }
+      return; }
+    if(this.state==='SIEGE'){ this.siegeTick(dt,d.barrDmg); return; }
+    const fresh=game.time-this.noiseMemT<9;
+    if(this.canSeePlayer()||fresh||dist2d(this.x,this.z,player.x,player.z)<16){
+      this.state='HUNT'; this.followFlow(d.speed*(this.repaired?1.35:1));
+      this.clankT=(this.clankT||0)-dt;
+      if(this.clankT<=0){ this.clankT=1.3+Math.random()*0.8; emitNoise(this.x,this.z,18,0.35,'clank');
+        if(Math.random()<0.5)AudioEngine.clank&&AudioEngine.clank(); }
+      if(Math.random()<dt*0.5){ this.vx*=0.15; this.vz*=0.15; }   // servo stutter
+    } else { this.state='WANDER'; this.wanderTick(dt,d.speed*0.45); }
+  }
+  // --- THE ECHO (Level 333): walks where you already were, half a second
+  // late. It is not chasing you — you are chasing yourself. Turn to look
+  // and it freezes, indistinguishable from an associate waiting patiently.
+  brainEcho(dt,d){
+    const seen=playerCanSee(this.x,this.z);
+    this.mesh.rotation.y=Math.atan2(player.x-this.x,player.z-this.z);
+    if(seen){ this.vx=0; this.vz=0; this.mesh.position.set(this.x,0,this.z); return; }
+    const p=(typeof playerTrailAt==='function')?playerTrailAt(0.6):{x:player.x,z:player.z};
+    const dx=p.x-this.x, dz=p.z-this.z, l=Math.hypot(dx,dz)||1;
+    if(l>0.15){ this.vx=dx/l*d.speed; this.vz=dz/l*d.speed; this.applyMove(dt); }
+    else { this.vx=0; this.vz=0; }
+    if(!this._noted&&dist2d(this.x,this.z,player.x,player.z)<7){ this._noted=true;
+      subtitle('Footsteps behind you. Yours, from a few seconds ago.','#9aa8b5',3); }
+    if(dist2d(this.x,this.z,player.x,player.z)<1.15&&this.atkCd<=0){
+      this.atkCd=1.1; damagePlayer(d.dmg,'echo'); addFear(20); shakeCam(0.6);
+      AudioEngine.staticBurst&&AudioEngine.staticBurst(0.3,0.06);
+    }
+  }
+  // --- THE ORNAMENT (Level 666): a mannequin dressed for a dead holiday.
+  // Statue-still by day or under power. At night, unwatched, it creeps —
+  // freezeWhenSeen (set at spawn) locks it the instant you look back.
+  brainOrnament(dt,d){
+    const active=game.shift==='NIGHT'||game.power==='OFF';
+    if(!active){ this.vx=0; this.vz=0; this.state='WANDER'; return; }
+    if(this.state==='SIEGE'){ this.siegeTick(dt,d.barrDmg); return; }
+    if(this.canSeePlayer()){ this.state='HUNT'; this.followFlow(d.speed); }
+    else if(this.state==='HUNT'){ this.followFlow(d.speed*0.75); }
+    else { this.vx=0; this.vz=0; }
+  }
   brainChild(dt,d){
     // The Lost Child: only moves when unobserved. Touch = fear spike + item theft.
     const seen=playerCanSee(this.x,this.z);
@@ -2104,6 +2244,10 @@ class Enemy{
     if(this.provokedOnly)this.provoked=true;    // Archon: you broke the truce
     if((this.type==='specter'||this.type==='ghost')&&!fromFire)return; // bullets pass through
     this.hp-=dmg;
+    if(this.type==='assembler'&&!this.repaired&&this.hp>0&&this.hp<=this.def().hp*0.5){
+      this.repaired=true; this.repairT=1.8;                 // the window: it stops to weld itself shut
+      AudioEngine.creak&&AudioEngine.creak(); subtitle('It stops. It is putting itself back together.','#ff9a5a',2.5);
+    }
     if(this.hostile()){ this.noiseX=player.x; this.noiseZ=player.z; this.noiseMemT=game.time; }
     if(this.hp<=0){ this.dead=true; game.kills++; this.despawn(true); }
   }
@@ -2123,6 +2267,10 @@ const ENEMY_DEFS={
   faceless:{hp:1e9,speed:2.3,hearing:0,   vision:0,  dmg:0,  barrDmg:0,  w:0.62,h:2.0},
   worker: {hp:40, speed:1.5, hearing:0.3, vision:0,  dmg:0,  barrDmg:0,  w:0.6,h:1.8},
   ghost:  {hp:30, speed:1.1, hearing:0,   vision:0,  dmg:0,  barrDmg:0,  w:0.6,h:2.0},
+  // ---- bespoke floor-signature entities ----
+  assembler:{hp:90, speed:3.0, hearing:1.3, vision:20, dmg:18, barrDmg:22, w:0.75,h:2.0,atkRate:1.3}, // LV808
+  echo:     {hp:70, speed:4.0, hearing:0,   vision:0,  dmg:22, barrDmg:0,  w:0.6, h:1.85},              // LV333
+  ornament: {hp:55, speed:3.6, hearing:1.0, vision:18, dmg:14, barrDmg:8,  w:0.6, h:1.9},               // LV666
 };
 
 function spawnPopulation(rng,floorIdx,biome){
@@ -2150,7 +2298,7 @@ function spawnPopulation(rng,floorIdx,biome){
     case 'LV020':  spawnAt('crawler',4); spawnAt('stocker',2,variant); return;
     case 'LV100':  spawnAt('ghost',4,e=>{e.passive=true;}); return;
     case 'LV234':  spawnAt('greeter',4,e=>{variant(e);}); spawnAt('stocker',2,variant); return; // mirror greeters move only unseen
-    case 'LV666':  spawnAt('greeter',2,variant); spawnAt('child',1); return; // + 16 mannequin stalkers from set dressing
+    case 'LV666':  spawnAt('ornament',3,e=>{e.freezeWhenSeen=true;}); spawnAt('child',1); return; // + mannequin stalkers from set dressing
     case 'LV12245':spawnAt('stocker',6,e=>{e.provokedOnly=true;}); return;   // Warehouse Operators
     case 'LV2000': spawnAt('stocker',4,e=>{e.waterBorn=true;}); spawnAt('crawler',2); return; // Water Workers
     case 'LV404':  spawnAt('faceless',2); spawnAt('stocker',2,variant); return;
@@ -2158,9 +2306,9 @@ function spawnPopulation(rng,floorIdx,biome){
     case 'LV045':  spawnAt('crawler',5); return;                             // boiler crawlers
     case 'LV090':  return;                                                   // Safe, surreal, empty
     case 'LV222':  spawnAt('greeter',3,variant); spawnAt('stocker',2,variant); return;
-    case 'LV333':  spawnAt('stocker',4,variant); spawnAt('faceless',1); return; // echo/mimic
+    case 'LV333':  spawnAt('echo',2); spawnAt('stocker',2,variant); return;   // The Echo: mimics your OWN past steps
     case 'LV515':  spawnAt('stocker',4,e=>{e.waterBorn=true;}); spawnAt('crawler',3); return;
-    case 'LV808':  spawnAt('greeter',2,variant); return;                     // + mannequin stalkers from dressing
+    case 'LV808':  spawnAt('assembler',2); spawnAt('greeter',1,variant); return; // The Assembler: fresh off the line
     case 'LV999':  return;                                                   // golden safe room
     case 'LV777':  return;                                                   // nothing hunts here
     case 'LVAPO': case 'LVAPO0': return;                                     // the Sun and the Guardian are enough
@@ -2209,6 +2357,19 @@ function playerCanSee(x,z){ // frustum-ish: within 100° of view and LOS
   let dyaw=Math.abs(((ang-player.yaw+Math.PI*3)%(Math.PI*2))-Math.PI);
   return dyaw<0.9&&losClear(player.x,player.z,x,z);
 }
+// rolling ~4s buffer of player positions — lets an entity walk where the
+// player WAS rather than where they ARE (the Employee Echo, LV333).
+const playerTrail=[];
+function recordPlayerTrail(){
+  playerTrail.push({x:player.x,z:player.z,t:game.time});
+  while(playerTrail.length>1&&game.time-playerTrail[0].t>4)playerTrail.shift();
+}
+function playerTrailAt(secAgo){
+  const target=game.time-secAgo;
+  if(!playerTrail.length)return {x:player.x,z:player.z};
+  for(let i=playerTrail.length-1;i>=0;i--){ if(playerTrail[i].t<=target)return playerTrail[i]; }
+  return playerTrail[0];
+}
 function playerFlashlightOn(x,z){
   if(!player.flashlight)return false;
   return dist2d(player.x,player.z,x,z)<13&&playerCanSee(x,z);
@@ -2235,11 +2396,12 @@ function updatePlayer(dt){
   if(player.slipping>0){ player.slipping-=dt;
     player.x+=Math.sin(player.yaw)*4*dt; player.z+=Math.cos(player.yaw)*4*dt; resolvePlayerCollision(); syncCamera(dt); return; }
   Input.consumeMouse();                       // drain the accumulator; mouse no longer steers the camera
-  if(Input.keys.ArrowLeft) player.yaw+=CFG.turnSpeed*dt;
-  if(Input.keys.ArrowRight) player.yaw-=CFG.turnSpeed*dt;
+  const sens=(typeof Settings!=='undefined')?Settings.sens:1;
+  if(Input.keys.ArrowLeft) player.yaw+=CFG.turnSpeed*sens*dt;
+  if(Input.keys.ArrowRight) player.yaw-=CFG.turnSpeed*sens*dt;
   // mobile thumbstick look: horizontal drag turns (yaw), vertical tilts (pitch)
   if(Input.consumeLook){ const [ldx,ldy]=Input.consumeLook();
-    if(ldx)player.yaw-=ldx; if(ldy)player.pitch=clamp(player.pitch+ldy,-0.9,0.9); }
+    if(ldx)player.yaw-=ldx*sens; if(ldy)player.pitch=clamp(player.pitch+ldy*sens,-0.9,0.9); }
 
   const f=(Input.keys.KeyW?1:0)-(Input.keys.KeyS?1:0);
   const s=(Input.keys.KeyA?1:0)-(Input.keys.KeyD?1:0);
@@ -2296,6 +2458,7 @@ function updatePlayer(dt){
   // health regen when calm
   if(player.fear<25&&player.hp<CFG.hpMax)player.hp=Math.min(CFG.hpMax,player.hp+dt*1.2);
 
+  recordPlayerTrail();
   updateWeapon(dt);
   updateInteract(dt);
   updateCarry(dt);
@@ -2843,6 +3006,38 @@ function artCartMesh(){
 function _box(w,h,d,mat,x,y,z){ const m=new THREE.Mesh(geo(new THREE.BoxGeometry(w,h,d)),mat); m.position.set(x,y,z); return m; }
 function artHumanoid(type,def){
   const g=new THREE.Group(); const H=def.h;
+  // THE ASSEMBLER (LV808): half machine, half mannequin — bare welded frame
+  // down one side, resin plating on the other, an unfinished claw for a
+  // right hand. Asymmetric on purpose: it came off the line before shift change.
+  if(type==='assembler'){
+    const frame=new THREE.MeshStandardMaterial({map:TX.metal,roughness:0.55,metalness:0.85,color:0x8a8f96}); disposables.push(frame);
+    const plate=new THREE.MeshStandardMaterial({color:0xd8d2c4,roughness:0.6,metalness:0.1}); disposables.push(plate);
+    const jointMat=new THREE.MeshStandardMaterial({color:0x3a3e44,roughness:0.4,metalness:0.9}); disposables.push(jointMat);
+    const jGeo=geo(new THREE.SphereGeometry(0.055,8,6));
+    g.add(_box(0.18,0.06,0.16,frame,0,H*0.5,0));                                   // pelvis frame
+    const spine=new THREE.Mesh(geo(new THREE.CylinderGeometry(0.035,0.035,H*0.32,6)),frame);
+    spine.position.y=H*0.66; g.add(spine);
+    g.add(_box(0.22,H*0.28,0.05,plate,0.09,H*0.62,0));                             // right ribs: plated
+    for(let i=0;i<3;i++){ const rib=new THREE.Mesh(geo(new THREE.TorusGeometry(0.1,0.012,6,10,Math.PI)),frame);
+      rib.position.set(-0.02,H*0.5+i*0.09,0); rib.rotation.y=Math.PI/2; g.add(rib); } // left ribs: bare
+    const legGeo=geo(new THREE.CylinderGeometry(0.045,0.038,H*0.36,6));
+    [[-0.13,0],[0.13,0]].forEach(([lx])=>{ const leg=new THREE.Mesh(legGeo,frame); leg.position.set(lx,H*0.2,0); g.add(leg);
+      const knee=new THREE.Mesh(jGeo,jointMat); knee.position.set(lx,H*0.36,0); g.add(knee); });
+    const armGeo=geo(new THREE.CylinderGeometry(0.04,0.034,H*0.32,6));
+    const armL=new THREE.Mesh(armGeo,frame); armL.position.set(-def.w*0.6,H*0.58,0); armL.rotation.z=0.15; g.add(armL);
+    const armR=new THREE.Mesh(armGeo,frame); armR.position.set(def.w*0.6,H*0.58,0); armR.rotation.z=-0.15; g.add(armR);
+    g.add(_box(0.09,0.11,0.07,plate,-def.w*0.62,H*0.4,0));                          // left: a finished hand
+    const claw=new THREE.Mesh(geo(new THREE.ConeGeometry(0.05,0.12,5)),jointMat);
+    claw.position.set(def.w*0.62,H*0.4,0); claw.rotation.x=Math.PI; g.add(claw);    // right: unfinished claw stub
+    g.userData.armR=armR; g.userData.armL=armL;
+    const head=_box(0.22,0.24,0.22,plate,0,H*0.88,0); g.add(head); g.userData.head=head;
+    const skullFrame=new THREE.Mesh(geo(new THREE.SphereGeometry(0.12,8,6,0,Math.PI)),frame);
+    skullFrame.position.set(0,H*0.88,0); skullFrame.rotation.y=-Math.PI/2; g.add(skullFrame);
+    const seam=new THREE.Mesh(geo(new THREE.PlaneGeometry(0.02,H*0.3)),new THREE.MeshBasicMaterial({color:0xff9a3a}));
+    seam.position.set(-0.005,H*0.6,0.045); g.add(seam);
+    g.userData.type=type;
+    return g;
+  }
   // CRAWLER: a proper quadruped build — elongated low body, spine ridge,
   // four articulated limbs (animated in Enemy.animate), head slung forward.
   if(type==='crawler'){
@@ -2862,7 +3057,9 @@ function artHumanoid(type,def){
     return g;
   }
   // THE FACELESS: no uniform, no tag, no face, no eyes. Just a person-shape.
-  const faceless=type==='faceless';
+  // THE ECHO (LV333) shares the same no-face/no-tag treatment — it is a
+  // copy of a person, not a person, and was never issued a badge.
+  const faceless=type==='faceless'||type==='echo';
   const uniform=faceless?MAT.pants:type==='manager'?MAT.suit:MAT.vest;
   // legs
   g.add(_box(0.2,H*0.4,0.22,MAT.pants,-0.14,H*0.2,0));
@@ -2899,6 +3096,29 @@ function artHumanoid(type,def){
   if(type==='crawler'){ g.rotation.x=1.15; g.position.y=-0.2; } // low crawl
   if(type==='child'){ g.scale.setScalar(0.55); }
   if(type==='roller'){ const cart=artCartMesh(); cart.scale.setScalar(1.15); cart.position.set(0,0,0.3); g.add(cart); g.position.y=0; }
+  // THE ECHO: a translucent after-image — desaturated, half-transparent,
+  // never quite in focus. It is not wearing a uniform; it is wearing the
+  // MEMORY of one.
+  if(type==='echo'){
+    g.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone(); o.material.transparent=true;
+      o.material.opacity=0.7; if(o.material.color)o.material.color.lerp(new THREE.Color(0x9ab0c4),0.35);
+      disposables.push(o.material); } });
+  }
+  // THE ORNAMENT: a mannequin dressed for every dead holiday at once —
+  // melted Santa hat, drooping tinsel, ornament-shard jewelry.
+  if(type==='ornament'){
+    const hatMat=new THREE.MeshStandardMaterial({color:0x7a1f1f,roughness:0.8}); disposables.push(hatMat);
+    const trimMat=new THREE.MeshStandardMaterial({color:0xd8d0c0,roughness:0.9}); disposables.push(trimMat);
+    const hat=new THREE.Mesh(geo(new THREE.ConeGeometry(0.13,0.26,8)),hatMat);
+    hat.position.set(0.02,H*0.98,-0.02); hat.rotation.z=0.35; g.add(hat);
+    g.add(_box(0.24,0.04,0.24,trimMat,0.02,H*0.88,-0.02));
+    const tinselMat=new THREE.MeshBasicMaterial({color:0xc9a52a}); disposables.push(tinselMat);
+    for(let i=0;i<3;i++){ const t=new THREE.Mesh(geo(new THREE.TorusGeometry(0.16,0.012,5,12)),tinselMat);
+      t.position.set(0,H*0.76-i*0.03,0); t.rotation.x=Math.PI/2+i*0.15; g.add(t); }
+    [0xb03030,0x2f7a4a,0x2a5a9a].forEach((c,i)=>{ const m=new THREE.MeshStandardMaterial({color:c,roughness:0.3,metalness:0.5});
+      disposables.push(m); const b=new THREE.Mesh(geo(new THREE.SphereGeometry(0.035,6,5)),m);
+      b.position.set(-def.w*0.62,H*0.5-i*0.08,0.03); g.add(b); });
+  }
   g.userData.type=type;
   return g;
 }
@@ -3685,7 +3905,7 @@ function apoUpdate(dt){
     if(d<7&&humble){
       guardian.judged=true;
       subtitle('THE GUARDIAN OF ETERNESS: "You kneel. You carry no fire. The store did not keep you."','#ffd77a',6);
-      setTimeout(()=>{ if(game.state==='play'){ addItem('realitykey',1);
+      setTimeout(()=>{ if(game.state==='play'){ addItem('realitykey',1); game.realityKeySource='guardian';
         subtitle('It places the REALITY KEY in your hands. The Gate will open.','#ffd77a',5); AudioEngine.chime(); } },3500);
     } else if(d<6&&!humble){
       guardian.warnCd=(guardian.warnCd||0)-dt;
@@ -5010,7 +5230,7 @@ function breakRealityGlass(){
 function takeRealityKey(){
   const P=realityPillar; if(!P||P.cardTaken)return;
   P.cardTaken=true; if(P.card)P.card.visible=false; if(P.light)P.light.intensity=0.3;
-  addItem('realitykey',1);
+  addItem('realitykey',1); game.realityKeySource='pillar';
   AudioEngine.chime&&AudioEngine.chime(); AudioEngine.confirm&&AudioEngine.confirm();
   subtitle('REALITY KEY acquired. The Threshold — APO-∞ — is now reachable from any elevator.','#f2c64a',6);
 }
@@ -5303,6 +5523,136 @@ function refreshCheatHUD(){
   const active=CHEAT_DEFS.filter(c=>cheats[c.key]).map(c=>c.label);
   if(active.length){ w.style.display='block'; w.textContent='CHEATS: '+active.join(' · '); }
   else w.style.display='none';
+}
+
+// ============================================================================
+//  META  —  Settings, Service Record (cross-run stats), and the two distinct
+//  APO-∞ endings. Nothing here changes gameplay balance; it only remembers,
+//  reports, and lets the player tune feel.
+// ============================================================================
+
+// ---- SETTINGS ---------------------------------------------------------------
+const Settings={
+  master:0.70, music:1.0, sens:1.0, fov:74, subtitles:true, colorblind:false,
+  load(){
+    try{ const s=JSON.parse(localStorage.getItem('iw_settings')); if(s)Object.assign(this,s); }catch(e){}
+    this.apply();
+  },
+  persist(){ try{ localStorage.setItem('iw_settings',JSON.stringify(
+    {master:this.master,music:this.music,sens:this.sens,fov:this.fov,subtitles:this.subtitles,colorblind:this.colorblind})); }catch(e){} },
+  apply(){
+    if(typeof AudioEngine!=='undefined'&&AudioEngine.ready&&AudioEngine.master)
+      AudioEngine.master.gain.value=this.master;
+    if(typeof camera!=='undefined'&&camera){ camera.fov=this.fov; camera.updateProjectionMatrix(); }
+    document.body.classList.toggle('colorblind',this.colorblind);
+    applyColorblindPalette(this.colorblind);
+  },
+};
+// SCP class colors, swapped in place so every reader (level card, elevator
+// menu) picks the alt palette up on its next render — no hunting down callers.
+const CLASS_COLORS_DEFAULT={SAFE:'#4ade6a','TICONDEROGA':'#d8c96a',EUCLID:'#f2d43a',
+  'EUCLID → KETER':'#ff9a3a',KETER:'#ff4444','ARCHON-SAFE':'#e0b84a',APOLLYON:'#ff2438',
+  THAUMIEL:'#9a7ae0',NEUTRALIZED:'#8a939c'};
+const CLASS_COLORS_CB={SAFE:'#3aa0f0','TICONDEROGA':'#e0c050',EUCLID:'#f2c23a',
+  'EUCLID → KETER':'#ff8f2a',KETER:'#ff5a1f','ARCHON-SAFE':'#e8b84a',APOLLYON:'#ff2438',
+  THAUMIEL:'#c9a0ff',NEUTRALIZED:'#9aa4ae'};
+function applyColorblindPalette(on){
+  if(typeof CLASS_COLORS==='undefined')return;
+  Object.assign(CLASS_COLORS,on?CLASS_COLORS_CB:CLASS_COLORS_DEFAULT);
+}
+function settingsWireSlider(id,valId,fmt,onInput){
+  const s=el(id); if(!s)return;
+  s.oninput=()=>{ const v=+s.value; el(valId).textContent=fmt(v); onInput(v); Settings.persist(); Settings.apply(); };
+}
+function settingsWireToggle(id,key){
+  const t=el(id); if(!t)return;
+  t.onclick=()=>{ Settings[key]=!Settings[key]; t.classList.toggle('on',Settings[key]);
+    Settings.persist(); Settings.apply(); AudioEngine.click&&AudioEngine.click(Settings[key]?900:400,0.08); };
+}
+function settingsInit(){
+  Settings.load();
+  el('setMaster').value=Math.round(Settings.master*100); el('setMasterVal').textContent=Math.round(Settings.master*100)+'%';
+  el('setMusic').value=Math.round(Settings.music*100); el('setMusicVal').textContent=Math.round(Settings.music*100)+'%';
+  el('setSens').value=Math.round(Settings.sens*100); el('setSensVal').textContent=Math.round(Settings.sens*100)+'%';
+  el('setFov').value=Settings.fov; el('setFovVal').textContent=Settings.fov+'°';
+  el('setSubtitles').classList.toggle('on',Settings.subtitles);
+  el('setColorblind').classList.toggle('on',Settings.colorblind);
+  settingsWireSlider('setMaster','setMasterVal',v=>v+'%',v=>Settings.master=v/100);
+  settingsWireSlider('setMusic','setMusicVal',v=>v+'%',v=>Settings.music=v/100);
+  settingsWireSlider('setSens','setSensVal',v=>v+'%',v=>Settings.sens=v/100);
+  settingsWireSlider('setFov','setFovVal',v=>v+'°',v=>Settings.fov=v);
+  settingsWireToggle('setSubtitles','subtitles');
+  settingsWireToggle('setColorblind','colorblind');
+}
+
+// ---- SERVICE RECORD (cross-run meta-progression) -----------------------------
+const MetaRecord={
+  runs:0, deepestFloor:0, deaths:0, kills:0, docs:[], endings:[], lastAt:0,
+  load(){
+    try{ const s=JSON.parse(localStorage.getItem('iw_record')); if(s)Object.assign(this,s); }catch(e){}
+    if(!Array.isArray(this.docs))this.docs=[];
+    if(!Array.isArray(this.endings))this.endings=[];
+  },
+  persist(){ try{ localStorage.setItem('iw_record',JSON.stringify(
+    {runs:this.runs,deepestFloor:this.deepestFloor,deaths:this.deaths,kills:this.kills,
+     docs:this.docs,endings:this.endings,lastAt:Date.now()})); }catch(e){} },
+  // called once per run, on death OR on win
+  recordRunEnd(kind,endingId){
+    this.runs++;
+    this.deepestFloor=Math.max(this.deepestFloor,game.floor||0);
+    this.kills+=game.kills||0;
+    if(kind==='death')this.deaths++;
+    (game.notesFound||[]).forEach(i=>{ if(!this.docs.includes(i))this.docs.push(i); });
+    if(endingId&&!this.endings.includes(endingId))this.endings.push(endingId);
+    this.persist();
+  },
+};
+const ENDING_DEFS={
+  pillar:{tag:'THE TRUE ENDING — PREPARED',
+    text:'You pass through the Gate of Escape holding a key you took by force from a sealed reality. The intercom voice thanks you, and for the first time, it sounds surprised.',
+    sub:'You broke the anchor in the Hyperstructure yourself. Nothing was given to you.'},
+  guardian:{tag:'THE TRUE ENDING — HUMBLED',
+    text:'You pass through the Gate of Escape holding a key the Guardian placed in your open hands. Behind you, the store keeps its endless morning — it did not keep you.',
+    sub:'You knelt before the Guardian of Eterness, empty-handed, and were judged worthy.'},
+  unknown:{tag:'THE TRUE ENDING',
+    text:'You pass through the Gate of Escape. The intercom voice thanks you, and for the first time, it sounds tired.',
+    sub:'Judged worthy by the Guardian of Eterness.'},
+};
+function renderWinEnding(){
+  const src=game.realityKeySource||'unknown';
+  const d=ENDING_DEFS[src]||ENDING_DEFS.unknown;
+  el('winEndingTag').textContent=d.tag;
+  el('winEndingText').textContent=d.text;
+  el('winEndingSub').textContent=d.sub;
+  const mins=Math.floor((game.time||0)/60), secs=Math.floor((game.time||0)%60);
+  const cells=[
+    ['FLOORS SURVIVED','B'+game.floor],['DAYS',game.day],['KILLS',game.kills],
+    ['DOCUMENTS',game.notesFound.length+'/'+LORE.length],
+    ['CHAOS LEVEL',game.chaosLevel||0],['SHIFT TIME',mins+'m '+secs+'s'],
+  ];
+  el('winStatsGrid').innerHTML=cells.map(([l,v])=>
+    `<div class="wsCell"><div class="wsLabel">${l}</div><div class="wsVal">${v}</div></div>`).join('');
+  el('winCredits').innerHTML=
+    '<b>FINAL INCIDENT REPORT</b> — SCP-∞MART<br>'+
+    'SUBJECT STATUS: RELEASED<br>'+
+    'CONTAINMENT INTEGRITY: MAINTAINED<br>'+
+    'FILED BY: THE INTERCOM VOICE<br>'+
+    'WITNESSED BY: THE NIGHT SHIFT<br><br>'+
+    'The store is grateful for your continued patronage.';
+}
+function renderServiceRecord(){
+  MetaRecord.load();
+  const cells=[
+    ['SHIFTS WORKED',MetaRecord.runs],['DEEPEST FLOOR','B'+MetaRecord.deepestFloor],
+    ['TOTAL DEATHS',MetaRecord.deaths],['TOTAL KILLS',MetaRecord.kills],
+    ['DOCUMENTS RECOVERED',MetaRecord.docs.length+'/'+LORE.length],
+    ['ENDINGS WITNESSED',MetaRecord.endings.length+'/2'],
+  ];
+  el('recordGrid').innerHTML=cells.map(([l,v])=>
+    `<div class="recStat"><div class="rsLabel">${l}</div><div class="rsVal">${v}</div></div>`).join('');
+  const eDefs=[['pillar','PREPARED'],['guardian','HUMBLED']];
+  el('recordEndings').innerHTML=eDefs.map(([id,name])=>
+    `<span class="recEnding${MetaRecord.endings.includes(id)?' seen':''}">${MetaRecord.endings.includes(id)?name:'??? '+name}</span>`).join('');
 }
 
 // ============================================================================
@@ -6535,7 +6885,9 @@ function foundNote(idx){
 }
 let subT=null;
 function subtitle(text,color,secs){
-  const s=el('subtitle'); s.textContent=text; s.style.color=color||'#fff'; s.style.opacity=1;
+  const s=el('subtitle');
+  if(typeof Settings!=='undefined'&&!Settings.subtitles){ s.style.opacity=0; return; }
+  s.textContent=text; s.style.color=color||'#fff'; s.style.opacity=1;
   clearTimeout(subT); subT=setTimeout(()=>s.style.opacity=0,secs*1000);
 }
 // UI STABILITY: the hotbar DOM is built exactly ONCE; refreshes only touch
@@ -6694,7 +7046,7 @@ function openJournal(){
   });
 }
 function closeOverlays(){
-  ['craftOverlay','journalOverlay','noteOverlay','pauseOverlay','helpOverlay','elevMenu','invOverlay','cheatOverlay'].forEach(id=>el(id).style.display='none');
+  ['craftOverlay','journalOverlay','noteOverlay','pauseOverlay','helpOverlay','elevMenu','invOverlay','cheatOverlay','settingsOverlay','recordOverlay'].forEach(id=>el(id).style.display='none');
   if(typeof invUI!=='undefined'){ invUI.open=false; invUI.drag=null; const g=el('invDragGhost'); if(g)g.style.display='none'; }
   game.paused=false;
 }
@@ -6753,7 +7105,7 @@ function onKeyDown(code){
   }
 }
 function craftToggle(){ el('craftOverlay').style.display==='flex'?closeOverlays():openCraft(); }
-function anyOverlayOpen(){ return ['craftOverlay','journalOverlay','noteOverlay','helpOverlay','elevMenu','invOverlay'].some(id=>el(id).style.display==='flex'); }
+function anyOverlayOpen(){ return ['craftOverlay','journalOverlay','noteOverlay','helpOverlay','elevMenu','invOverlay','settingsOverlay','recordOverlay'].some(id=>el(id).style.display==='flex'); }
 function tryToggleFlashOrGrab(){ player.flashlight=!player.flashlight; AudioEngine.click(1100,0.1); }
 
 // ================================ SECTION 21: DEATH / RESTART ===============
@@ -6766,16 +7118,21 @@ function die(src){
     mannequin:'The mannequins finally reached you.',heat:'The air of the Everscorch took you apart.',
     steam:'Boiled alive in the backroom steam.',
     nezer:'Nezer-01-A made contact. Contact is fatal.',
-    sun:'The Sorrow Sun looked at you directly.',guardian:'Judged unworthy by the Guardian of Eterness.'};
+    sun:'The Sorrow Sun looked at you directly.',guardian:'Judged unworthy by the Guardian of Eterness.',
+    assembler:'Something unfinished finished you instead.',
+    echo:'You turned around too late. It had been behind you the whole time.',
+    ornament:'Something dressed for a holiday that never happened.'};
   el('deathCause').textContent=causes[src]||'The store closed around you.';
   el('deathStats').textContent=`Floors: B${game.floor} · Days: ${game.day} · Kills: ${game.kills} · Documents: ${game.notesFound.length}/${LORE.length}`;
   el('deathOverlay').style.display='flex';
+  if(typeof MetaRecord!=='undefined')MetaRecord.recordRunEnd('death',null);
 }
 // ---- THE TRUE ENDING ----
 function winGame(){
   game.state='won';
   document.exitPointerLock&&document.exitPointerLock();
-  el('winStats').textContent=`Floors survived: B${game.floor} · Days: ${game.day} · Kills: ${game.kills} · Documents: ${game.notesFound.length}/${LORE.length}`;
+  if(typeof renderWinEnding==='function')renderWinEnding();
+  if(typeof MetaRecord!=='undefined')MetaRecord.recordRunEnd('win',game.realityKeySource||'unknown');
   el('winOverlay').style.display='flex';
   AudioEngine.chime(); AudioEngine.humLevel(0);
   try{ window.speechSynthesis&&window.speechSynthesis.cancel(); }catch(e){}
@@ -6790,7 +7147,7 @@ function restart(){
     kills:0,craftTier:1,converterPlaced:false,paused:false,notesFound:[],
     floodStage:0,floodClock:0,floodDepth:0,baseFloodDepth:0,liminal:false,
     apoVisited:false,lootBias:null,chaosLevel:0,leaperInstalled:false,leaperPowered:false,
-    panelDamage:0,panelBroken:false});
+    panelDamage:0,panelBroken:false,realityKeySource:null});
   Object.assign(player,{hp:CFG.hpMax,stamina:CFG.staminaMax,fear:0,slot:0,shotgunLoaded:2,rifleLoaded:0,
     flashlight:false,nvg:false,carrying:null,x:0,z:0,slipping:0,gunKind:null});
   inv.counts={}; inv.owned={crowbar:true};
@@ -6912,6 +7269,15 @@ function boot(){
   el('pauseSave')&&(el('pauseSave').onclick=()=>{ if(typeof saveGame==='function')saveGame(); });
   if(typeof refreshContinueButton==='function')refreshContinueButton();
   if(typeof renderCheats==='function')renderCheats();
+  // SETTINGS / SERVICE RECORD wiring — both close via the generic .closeBtn
+  // handler below, which already hides every overlay (pause included) and
+  // reacquires pointer lock, so opening from Pause and closing drops
+  // straight back into gameplay.
+  if(typeof settingsInit==='function')settingsInit();     // loads saved settings, applies FOV/volume, wires sliders
+  el('settingsBtn')&&(el('settingsBtn').onclick=()=>{ AudioEngine.init(); AudioEngine.resume(); el('settingsOverlay').style.display='flex'; });
+  el('pauseSettings')&&(el('pauseSettings').onclick=()=>{ el('settingsOverlay').style.display='flex'; });
+  el('recordBtn')&&(el('recordBtn').onclick=()=>{ if(typeof renderServiceRecord==='function')renderServiceRecord();
+    el('recordOverlay').style.display='flex'; });
   // menu ambient hum on first interaction (audio needs a user gesture)
   el('menuOverlay').addEventListener('pointerdown',()=>{ AudioEngine.init(); AudioEngine.resume(); AudioEngine.humLevel&&AudioEngine.humLevel(0.03); },{once:true});
   el('lcClose').onclick=()=>closeLevelCard();
